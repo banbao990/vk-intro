@@ -1,0 +1,14 @@
+# vulkan-intro
++ 《计算机图形学》本科生课程 vulkan 代码示例
+
+## 配置
++ CMake 工程
++ 本项目仅依赖于 vulkan-sdk
+    + [vulkan-sdk](https://vulkan.lunarg.com/)
++ 测试的版本是 1.3.236.0
++ 已经测试成功可以运行的环境
+    + windows
+        + visual studio 2022
+        + vscode + 课程给出的 mingw
+
++ 更多问题请查看课程给出的[腾讯文档](https://docs.qq.com/doc/DUlloeFpHeVhaUm1J)

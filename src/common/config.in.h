@@ -1,0 +1,5 @@
+#pragma once
+
+#define PROJECT_DIRECTORY "@_PROJECT_DIRECTORY@"
+#define SHADER_DIRECTORY  "@_PROJECT_DIRECTORY@/shaders"
+#define ASSETS_DIRECTORY  "@_PROJECT_DIRECTORY@/assets"
