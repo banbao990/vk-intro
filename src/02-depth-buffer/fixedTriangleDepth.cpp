@@ -38,17 +38,9 @@ bool FixedTriangleDepthApp::deal_with_sdl_event(SDL_Event& e) {
     return false;
 }
 
-void FixedTriangleDepthApp::init_commands() {
-    init_commands_for_graphics_pipeline();
-}
-
 void FixedTriangleDepthApp::init_pipeline() {
     VkPipelineLayout tri_pipeline_layout = VK_NULL_HANDLE;
     add_pipeline_no_input("01-tri-fixed.vert.spv", "01-tri-fixed.frag.spv", nullptr, 0, true, _render_pass, 0, _tri_pipeline, tri_pipeline_layout);
-}
-
-void FixedTriangleDepthApp::init_sync_structures() {
-    init_sync_structures_for_graphics_pass();
 }
 
 void FixedTriangleDepthApp::init_scenes() {}

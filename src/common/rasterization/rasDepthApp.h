@@ -10,11 +10,11 @@ protected:
     // virtual void init() override;
     // virtual bool deal_with_sdl_event(SDL_Event& e)  override;
     virtual void draw() override;
-    virtual void init_commands() override = 0;
+    // virtual void init_commands() override;
     virtual void init_render_pass() override;
     virtual void init_framebuffers() override;
     virtual void init_pipeline() override = 0;
-    virtual void init_sync_structures() override = 0;
+    // virtual void init_sync_structures() override;
     virtual void init_scenes() override = 0;
     virtual void render() override = 0;
     // virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override;

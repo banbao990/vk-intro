@@ -252,6 +252,10 @@ FrameData& RasApp::get_current_frame() {
     return _frames[get_current_frame_idx()];
 }
 
+void RasApp::init_commands() {
+    init_commands_for_graphics_pipeline();
+}
+
 void RasApp::init_render_pass() {
     // 1. Add color_attachment
     VkAttachmentDescription color_attachment = {};
@@ -305,4 +309,35 @@ void RasApp::init_render_pass() {
             vkDestroyRenderPass(_device, _render_pass, nullptr);
         }
     );
+}
+
+void RasApp::init_framebuffers() {
+    // create the framebuffers for the swapchain images.
+        // This will connect the render-pass to the images for rendering
+    VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass, _window_extent);
+
+    // grab how many images we have in the swapchain
+    const uint32_t swapchain_image_count = (uint32_t)_swapchain_images.size();
+    _framebuffers = std::vector<VkFramebuffer>(swapchain_image_count);
+
+    // create framebuffers for each of the swapchain image views
+    for (uint32_t i = 0; i < swapchain_image_count; ++i) {
+        VkImageView& image_view = _swapchain_image_views[i];
+        fb_info.pAttachments = &image_view;
+        fb_info.attachmentCount = 1;
+        VkFramebuffer& framebuffer = _framebuffers[i];
+        VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
+    }
+
+    _main_deletion_queue.push_function(
+        [&]() {
+            for (VkFramebuffer& framebuffer : _framebuffers) {
+                vkDestroyFramebuffer(_device, framebuffer, nullptr);
+            }
+        }
+    );
+}
+
+void RasApp::init_sync_structures() {
+    init_sync_structures_for_graphics_pass();
 }

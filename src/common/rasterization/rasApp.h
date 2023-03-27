@@ -16,12 +16,12 @@ protected:
     virtual void draw() override;
 
     // command pool
-    virtual void init_commands() = 0;
+    virtual void init_commands();
     // set render target
     virtual void init_render_pass();
-    virtual void init_framebuffers() = 0;
+    virtual void init_framebuffers();
     virtual void init_pipeline() = 0;
-    virtual void init_sync_structures() = 0;
+    virtual void init_sync_structures();
     virtual void init_scenes() = 0;
     virtual void render() = 0;
     virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count);
