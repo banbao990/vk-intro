@@ -140,28 +140,9 @@ void RasTwoPassApp::init_render_pass() {
         subpass0.pColorAttachments = &color_attachment_ref;
         subpass0.pDepthStencilAttachment = &depth_attachment_ref;
 
-        // [3] add dependency (layout transition: only need in pass 1)
-        VkSubpassDependency dependencies[2] = {};
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-
         // 3. Add render pass
         VkRenderPassCreateInfo render_pass_info = {};
         render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-
-        render_pass_info.dependencyCount = 2;
-        render_pass_info.pDependencies = dependencies;
 
         // connect the color & depth attachment to the info
         // !!! the sequence are ordered !!!
@@ -200,28 +181,10 @@ void RasTwoPassApp::init_render_pass() {
         subpass0.colorAttachmentCount = 1;
         subpass0.pColorAttachments = &color_attachment_ref;
 
-        // [3] add dependency (layout transition: only need in pass 1)
-        VkSubpassDependency dependencies[2] = {};
-        dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[0].dstSubpass = 0;
-        dependencies[0].srcStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[0].srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-
-        dependencies[1].srcSubpass = 0;
-        dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-        dependencies[1].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-        dependencies[1].dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
-        dependencies[1].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        dependencies[1].dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
 
         // 3. Add render pass
         VkRenderPassCreateInfo render_pass_info = {};
         render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-
-        render_pass_info.dependencyCount = 2;
-        render_pass_info.pDependencies = dependencies;
 
         // !!! the sequence are ordered !!!
         render_pass_info.attachmentCount = 1;

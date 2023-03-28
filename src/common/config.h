@@ -1,5 +1,5 @@
 #pragma once
 
-#define PROJECT_DIRECTORY "C:/Users/GIL/Desktop/vk-intro"
-#define SHADER_DIRECTORY  "C:/Users/GIL/Desktop/vk-intro/shaders"
-#define ASSETS_DIRECTORY  "C:/Users/GIL/Desktop/vk-intro/assets"
+#define PROJECT_DIRECTORY "D:/Code/vkguide/vk-intro"
+#define SHADER_DIRECTORY  "D:/Code/vkguide/vk-intro/shaders"
+#define ASSETS_DIRECTORY  "D:/Code/vkguide/vk-intro/assets"
