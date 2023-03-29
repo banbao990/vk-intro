@@ -75,7 +75,7 @@ bool Mesh::load_from_obj(const char* relative_path) {
     }
 
     // 2. construct the structure (_vertices, _vertex_buffer)
-
+    _vertices.clear();
     // Loop over shapes
     for (size_t s = 0; s < shapes.size(); ++s) {
         // Loop over faces (polygon)
@@ -85,6 +85,8 @@ bool Mesh::load_from_obj(const char* relative_path) {
             // hardcode loading to triangles (trianglulate = true)
             const int fv = 3;
             // Loop over vertices in the face.
+            const bool have_normal = !attrib.normals.empty();
+            const bool have_uv = !attrib.texcoords.empty();
             for (size_t v = 0; v < fv; v++) {
                 // access to vertex
                 tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
@@ -96,15 +98,21 @@ bool Mesh::load_from_obj(const char* relative_path) {
                 tinyobj::real_t vz = attrib.vertices[v_idx + 2];
 
                 // vertex normal
-                int n_idx = 3 * idx.normal_index;
-                tinyobj::real_t nx = attrib.normals[n_idx + 0];
-                tinyobj::real_t ny = attrib.normals[n_idx + 1];
-                tinyobj::real_t nz = attrib.normals[n_idx + 2];
+                tinyobj::real_t nx = 0, ny = 0, nz = 1;
+                if (have_normal) {
+                    int n_idx = 3 * idx.normal_index;
+                    nx = attrib.normals[n_idx + 0];
+                    ny = attrib.normals[n_idx + 1];
+                    nz = attrib.normals[n_idx + 2];
+                }
 
                 // uv
-                int uv_idx = 2 * idx.texcoord_index;
-                tinyobj::real_t uv_x = attrib.texcoords[uv_idx + 0];
-                tinyobj::real_t uv_y = attrib.texcoords[uv_idx + 1];
+                tinyobj::real_t uv_x = 0, uv_y = 0;
+                if (have_uv) {
+                    int uv_idx = 2 * idx.texcoord_index;
+                    uv_x = attrib.texcoords[uv_idx + 0];
+                    uv_y = attrib.texcoords[uv_idx + 1];
+                }
 
                 // copy it into our vertex
                 Vertex new_vert = {};

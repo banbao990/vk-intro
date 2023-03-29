@@ -1,0 +1,20 @@
+# comment
+# a triangle obj example
+
+# vertex position
+v  0.2 0.2 0
+v -0.2 0.2 0
+v 0   -0.2 0
+
+# vertex uv
+vt 1.0 1.0
+vt 0   0
+vt 0.5 0
+
+# vertex normal
+vn 1.0   0 0
+vn   0 1.0 0
+vn   0   0 1.0
+
+# face (index start at 1)
+f 1/1/1 2/2/2 3/3/3

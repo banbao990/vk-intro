@@ -21,6 +21,7 @@ void TriVertexApp::init_scenes() {
     _tri_mesh._vertices[1].normal = { 0.0f, 1.0f, 0.0f }; // green
     _tri_mesh._vertices[2].normal = { 0.0f, 0.0f, 1.0f }; // blue
 
+    //_tri_mesh.load_from_obj("triangle.obj");
     upload_mesh(_tri_mesh);
 }
 
