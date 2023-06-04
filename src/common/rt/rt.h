@@ -97,8 +97,12 @@ protected:
     // command pool
     void init_commands();
     // set render target
-    void init_render_pass();
-    void init_framebuffers();
+    
+    void init_render_pass_for_imgui();
+    void draw_imgui(VkCommandBuffer cmd);
+
+
+    void init_framebuffers_for_imgui();
     void init_offscreen_image();
     virtual void init_pipeline();
     void init_sync_structures();
@@ -125,7 +129,7 @@ protected:
     static const uint32_t FRAME_OVERLAP = 2U;
     FrameData _frames[FRAME_OVERLAP]{};
     // render pass
-    VkRenderPass _render_pass = VK_NULL_HANDLE;
+    VkRenderPass _render_pass_for_imgui = VK_NULL_HANDLE;
     std::vector<VkFramebuffer> _framebuffers = {};
 
     // RasDepthApp
@@ -159,7 +163,7 @@ protected:
     AllocatedBuffer _uniform_data_buffer{};
 
     // RasTexApp
-    void init_imgui(uint32_t subpass, VkRenderPass render_pass);
+    void init_imgui();
     void upload_texture(Material& material);
 
     // Ray Tracing

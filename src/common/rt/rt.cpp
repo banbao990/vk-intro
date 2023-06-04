@@ -17,7 +17,7 @@ static const float sRotateSpeed = 0.25f;
 static const vec3 sSunPos = vec3(0.4f, 0.45f, 0.55f);
 static const float sAmbientLight = 0.1f;
 
-void RTApp::init_imgui(uint32_t subpass, VkRenderPass render_pass) {
+void RTApp::init_imgui() {
     // 1: create descriptor pool for IMGUI
     // the size of the pool is very oversize, but it'mesh_idx copied from imgui demo itself.
     const int MAX_SIZE_FOR_IMGUI = 100;
@@ -61,9 +61,16 @@ void RTApp::init_imgui(uint32_t subpass, VkRenderPass render_pass) {
     init_info.MinImageCount = 3;
     init_info.ImageCount = 3;
     init_info.MSAASamples = VK_SAMPLE_COUNT_1_BIT;
-    init_info.Subpass = subpass;
+    init_info.Subpass = 0;
 
-    ImGui_ImplVulkan_Init(&init_info, render_pass);
+    // BB Begin
+    // create renderpass for IMGUI
+    init_render_pass_for_imgui();
+    init_framebuffers_for_imgui();
+
+    // BB end
+
+    ImGui_ImplVulkan_Init(&init_info, _render_pass_for_imgui);
 
     // execute a gpu command to upload imgui font textures
     immediate_submit(
@@ -82,6 +89,76 @@ void RTApp::init_imgui(uint32_t subpass, VkRenderPass render_pass) {
             ImGui_ImplVulkan_Shutdown();
         }
     );
+}
+
+
+void RTApp::draw_imgui(VkCommandBuffer cmd) {
+    VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(_render_pass_for_imgui, _window_extent, _framebuffers[_swapchain_image_index]);
+    vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
+
+    // ui start
+    ImGui::Text("FPS: %.2f", fps());
+    // ui end
+
+    ImGui::Render();
+    ImGui_ImplVulkan_RenderDrawData(ImGui::GetDrawData(), cmd);
+    vkCmdEndRenderPass(cmd);
+}
+
+void RTApp::init_render_pass_for_imgui() {
+    // 1. Add color_attachment
+    VkAttachmentDescription color_attachment = {};
+
+    // the format needed by the swapchain
+    color_attachment.format = _swapchain_image_format;
+    // no MSAA
+    color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
+    // clear when load when loading the attachment
+    color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    // keep the attachment stored when the renderpass ends
+    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+
+    // do not care about stencil now
+    color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    // do not care
+    color_attachment.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    // after the renderpass ends, the image has to be on a layout ready for display
+    color_attachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    // 2. Add subpass
+    VkAttachmentReference color_attachment_ref = {};
+    // attachment number will index into the pAttachments array in the parent renderpass itself
+    color_attachment_ref.attachment = 0; // index = 0
+    color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    // 1 subpass
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &color_attachment_ref;
+
+    // 3. Add render pass
+    VkRenderPassCreateInfo render_pass_info = {};
+    render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+
+    // connect the color & depth attachment to the info
+    render_pass_info.attachmentCount = 1;
+    render_pass_info.pAttachments = &color_attachment;
+
+    // connect the subpass to the info
+    render_pass_info.subpassCount = 1;
+    render_pass_info.pSubpasses = &subpass;
+
+    VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass_for_imgui));
+
+    _main_deletion_queue.push_function(
+        [=]() {
+            vkDestroyRenderPass(_device, _render_pass_for_imgui, nullptr);
+        }
+    );
+
 }
 
 void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
@@ -205,6 +282,9 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
     );
+
+    // draw imgui
+    draw_imgui(cmd);
 }
 
 RTApp::RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :_frame_time_samples(30) {
@@ -237,15 +317,15 @@ void RTApp::run() {
         while (SDL_PollEvent(&e) != 0) {
             b_quit = deal_with_sdl_event(e);
         }
-        //init_per_frame();
+        init_per_frame();
         draw();
     }
 }
 
 void RTApp::init_per_frame() {
-    //ImGui_ImplVulkan_NewFrame();
-    //ImGui_ImplSDL2_NewFrame(_window);
-    //ImGui::NewFrame();
+    ImGui_ImplVulkan_NewFrame();
+    ImGui_ImplSDL2_NewFrame(_window);
+    ImGui::NewFrame();
 }
 
 void RTApp::init() {
@@ -265,7 +345,7 @@ void RTApp::init() {
 
     init_pipeline();
 
-    //init_imgui(0, _render_pass);
+    init_imgui();
 
     update_descriptors();
 
@@ -274,7 +354,7 @@ void RTApp::init() {
 }
 
 bool RTApp::deal_with_sdl_event(SDL_Event& e) {
-    //ImGui_ImplSDL2_ProcessEvent(&e);
+    ImGui_ImplSDL2_ProcessEvent(&e);
 
     // close the window when user alt-f4s or clicks the X button
     if (e.type == SDL_QUIT) {
@@ -764,12 +844,12 @@ void RTApp::init_offscreen_image() {
     );
 }
 
-void RTApp::init_framebuffers() {
+void RTApp::init_framebuffers_for_imgui() {
     const uint32_t swapchain_image_count = (uint32_t)_swapchain_images.size();
 
     // create the framebuffers for the swapchain images.
     // This will connect the render-pass to the images for rendering
-    VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass, _window_extent);
+    VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass_for_imgui, _window_extent);
 
     // grab how many images we have in the swapchain
     _framebuffers = std::vector<VkFramebuffer>(swapchain_image_count);
