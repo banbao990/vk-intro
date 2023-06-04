@@ -93,11 +93,19 @@ void RTApp::init_imgui() {
 
 
 void RTApp::draw_imgui(VkCommandBuffer cmd) {
-    VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(_render_pass_for_imgui, _window_extent, _framebuffers[_swapchain_image_index]);
+    VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(_render_pass_for_imgui, _window_extent, _framebuffers_for_imgui[_swapchain_image_index]);
     vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     // ui start
     ImGui::Text("FPS: %.2f", fps());
+    int id = 0;
+    if (ImGui::CollapsingHeader("Camera")) {
+        ++id;
+        ImGui::PushID(id);
+        ImGui::Checkbox("Enable Camera", &mCameraEnable);
+        ImGui::PopID();
+    }
+
     // ui end
 
     ImGui::Render();
@@ -165,35 +173,34 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     // update params
     UniformParams uniform_data = {};
     uniform_data.sunPosAndAmbient = vec4(sSunPos, sAmbientLight);
-    {
-        vec2 moveDelta(0.0f, 0.0f);
-        if (mWKeyDown) {
-            moveDelta.y += 1.0f;
-        }
-        if (mSKeyDown) {
-            moveDelta.y -= 1.0f;
-        }
-        if (mAKeyDown) {
-            moveDelta.x -= 1.0f;
-        }
-        if (mDKeyDown) {
-            moveDelta.x += 1.0f;
-        }
-        float dt = 0.0f;
-        if (_frame_time_samples.size() >= 2) {
-            auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(_frame_time_samples.back() - mLastRec);
-            dt = delta.count() / 2.0f;
-        }
-        mLastRec = _frame_time_samples.back();
-        moveDelta *= sMoveSpeed * dt * (mShiftDown ? sAccelMult : 1.0f);
-        mCamera.Move(moveDelta.x, moveDelta.y);
-
-        uniform_data.camPos = vec4(mCamera.GetPosition(), 0.0f);
-        uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
-        uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
-        uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
-        uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane(), Deg2Rad(mCamera.GetFovY()), 0.0f);
+    vec2 moveDelta(0.0f, 0.0f);
+    if (mWKeyDown) {
+        moveDelta.y += 1.0f;
     }
+    if (mSKeyDown) {
+        moveDelta.y -= 1.0f;
+    }
+    if (mAKeyDown) {
+        moveDelta.x -= 1.0f;
+    }
+    if (mDKeyDown) {
+        moveDelta.x += 1.0f;
+    }
+    float dt = 0.0f;
+    if (_frame_time_samples.size() >= 2) {
+        auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(_frame_time_samples.back() - mLastRec);
+        dt = delta.count() / 2.0f;
+    }
+    moveDelta *= sMoveSpeed * dt * (mShiftDown ? sAccelMult : 1.0f);
+    mCamera.Move(moveDelta.x, moveDelta.y);
+
+    uniform_data.camPos = vec4(mCamera.GetPosition(), 0.0f);
+    uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
+    uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
+    uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
+    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane(), Deg2Rad(mCamera.GetFovY()), 0.0f);
+
+    mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
     vmaMapMemory(_allocator, _uniform_data_buffer._allocation, (void**)(&data));
@@ -361,8 +368,12 @@ bool RTApp::deal_with_sdl_event(SDL_Event& e) {
         return true;
     }
 
+    if (!mCameraEnable) {
+        return false;
+    }
+
     // onkey
-    else if (e.type == SDL_KEYDOWN) {
+    if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
         case SDLK_w: mWKeyDown = true; break;
         case SDLK_a: mAKeyDown = true; break;
@@ -551,7 +562,7 @@ void RTApp::init_vulkan() {
             << ", your limits is " << _physical_device_properties.limits.maxBoundDescriptorSets
             << std::endl;
     }
-    
+
     // get ray-tracing properties
     _rt_properties = {};
     _rt_properties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
@@ -852,7 +863,7 @@ void RTApp::init_framebuffers_for_imgui() {
     VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass_for_imgui, _window_extent);
 
     // grab how many images we have in the swapchain
-    _framebuffers = std::vector<VkFramebuffer>(swapchain_image_count);
+    _framebuffers_for_imgui = std::vector<VkFramebuffer>(swapchain_image_count);
 
     // create framebuffers for each of the swapchain image views
     for (uint32_t i = 0; i < swapchain_image_count; ++i) {
@@ -861,13 +872,13 @@ void RTApp::init_framebuffers_for_imgui() {
         fb_info.attachmentCount = 1;
         fb_info.pAttachments = &image_view;
 
-        VkFramebuffer& framebuffer = _framebuffers[i];
+        VkFramebuffer& framebuffer = _framebuffers_for_imgui[i];
         VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
     }
 
     _main_deletion_queue.push_function(
         [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers) {
+            for (VkFramebuffer& framebuffer : _framebuffers_for_imgui) {
                 vkDestroyFramebuffer(_device, framebuffer, nullptr);
             }
         }
@@ -1473,7 +1484,7 @@ void RTApp::init_descriptors() {
     // Sixth set:
     //  binding 0 ->  env texture
     VkDescriptorType types6[] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-    VkShaderStageFlags stages6[] = { VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR}; // TODO: 00000000 remove this stage
+    VkShaderStageFlags stages6[] = { VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR }; // TODO: 00000000 remove this stage
     _rt_set_layout[SWS_ENVS_SET] = _descriptors.create_set_layout(types6, stages6, 1);
 
     _main_deletion_queue.push_function(
@@ -1507,7 +1518,7 @@ void RTApp::update_descriptors() {
     ws.dstBinding = SWS_SCENE_AS_BINDING;
     ws.descriptorCount = 1;
     ws.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    write_sets.push_back(ws); 
+    write_sets.push_back(ws);
     // binding 0 end
 
     VkDescriptorImageInfo res_image_info = {};
@@ -1542,7 +1553,7 @@ void RTApp::update_descriptors() {
     ws.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     ws.pBufferInfo = _rt_scene._mat_IDs_buffer_infos.data();
     write_sets.push_back(ws);
-    
+
     // Third set:
     //  binding 0 (N)  ->  vertex attributes for our meshes  (N = num meshes)
     //   (re-using second's set info)

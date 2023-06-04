@@ -10,7 +10,7 @@ Shader::Shader(VkDevice device, const char* vertex_relative_path, const char* fr
     if (vertex_relative_path) {
         _vertex_shader = load_shader_module(device, vertex_relative_path);
     }
-    if (_fragment_shader) {
+    if (fragment_relative_path) {
         _fragment_shader = load_shader_module(device, fragment_relative_path);
     }
 }

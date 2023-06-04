@@ -67,7 +67,7 @@ protected:
 
     // vulkan 
     VkPhysicalDevice _physical_device = VK_NULL_HANDLE;         // Vulkan physical device
-    VkPhysicalDeviceProperties _physical_device_properties{};               // phisical device properties
+    VkPhysicalDeviceProperties _physical_device_properties{};   // phisical device properties
     VkDevice _device = VK_NULL_HANDLE;                          // Vulkan device for commands
     VkInstance _instance = VK_NULL_HANDLE;                      // Vulkan library handle
     VkDebugUtilsMessengerEXT _debug_messager = VK_NULL_HANDLE;  // Vulkan debug output handle
@@ -93,33 +93,26 @@ protected:
     FixSizeQueue<std::chrono::high_resolution_clock::time_point> _frame_time_samples;
 
     void create_window(const char* name, uint32_t width, uint32_t height);
-    // RasApp
+
     // command pool
     void init_commands();
-    // set render target
-    
+
+    // imgui
+    void init_imgui();
     void init_render_pass_for_imgui();
+    void init_framebuffers_for_imgui();
     void draw_imgui(VkCommandBuffer cmd);
 
+    VkRenderPass _render_pass_for_imgui = VK_NULL_HANDLE;
+    std::vector<VkFramebuffer> _framebuffers_for_imgui = {};
 
-    void init_framebuffers_for_imgui();
     void init_offscreen_image();
-    virtual void init_pipeline();
+    void init_pipeline();
     void init_sync_structures();
-    virtual void init_scenes();
-    virtual  void render();
-    void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count);
+    void init_scenes();
+    void render();
 
     void init_commands_for_graphics_pipeline();
-    void add_pipeline_no_input(
-        const char* vertex_shader_relative_path,
-        const char* fragment_shader_relative_path,
-        VkDescriptorSetLayout* set_layout, uint32_t set_layout_count,
-        bool use_z_buffer,
-        VkRenderPass renderpass,
-        uint32_t subpass,
-        VkPipeline& pipeline, VkPipelineLayout& layout
-    );
     void init_sync_structures_for_graphics_pass();
     FrameData& get_current_frame();
     uint32_t get_current_frame_idx() const;
@@ -128,43 +121,14 @@ protected:
     // frame Data
     static const uint32_t FRAME_OVERLAP = 2U;
     FrameData _frames[FRAME_OVERLAP]{};
-    // render pass
-    VkRenderPass _render_pass_for_imgui = VK_NULL_HANDLE;
-    std::vector<VkFramebuffer> _framebuffers = {};
-
-    // RasDepthApp
-    void add_attchment(FrameBufferAttachment* attachments, VkFormat format, VkImageUsageFlags usage_flag);
-    const VkFormat _DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
-    std::vector<FrameBufferAttachment> _depth_attachment{};
-
-    // RasVertexApp
-    void add_pipeline(
-        const char* vertex_shader_relative_path,
-        const char* fragment_shader_relative_path,
-        VkDescriptorSetLayout* set_layout, uint32_t set_layout_count,
-        bool use_z_buffer,
-        VkRenderPass renderpass,
-        uint32_t subpass,
-        VkPipeline& pipeline, VkPipelineLayout& layout
-    );
-
-    void upload_mesh(Mesh& mesh);
 
     // immediately execute
     ImmediateStructure _upload_context{};
-    // RasBufferApp
-    virtual void init_descriptors();
-    virtual void update_descriptors();
-
-    void init_descriptors_for_uniform_data(uint32_t buffer_size);
-    void init_descriptors_for_object_data(uint32_t size_per_object);
+    void init_descriptors();
+    void update_descriptors();
 
     Descriptor _descriptors{};
     AllocatedBuffer _uniform_data_buffer{};
-
-    // RasTexApp
-    void init_imgui();
-    void upload_texture(Material& material);
 
     // Ray Tracing
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR _rt_properties{};
@@ -187,7 +151,8 @@ protected:
 
     // camera & user input
     Camera                          mCamera{};
-    bool                            mWKeyDown{false};
+    bool                            mCameraEnable{ true };
+    bool                            mWKeyDown{ false };
     bool                            mAKeyDown{ false };
     bool                            mSKeyDown{ false };
     bool                            mDKeyDown{ false };
@@ -195,6 +160,7 @@ protected:
     bool                            mLMBDown{ false };
     vec2                            mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};
+
 public:
     void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
     void add_to_deletion_queue(std::function<void()>&& function);
