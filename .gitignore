@@ -3,3 +3,5 @@
 /bin
 *.spv
 /out
+*.bin
+/shaders/rt/shared_with_shaders.h

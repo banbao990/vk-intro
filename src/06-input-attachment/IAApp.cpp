@@ -53,7 +53,7 @@ void IAApp::render() {
     using namespace IAAppTest;
     const int padding_size = vkutils::padding(
         sizeof(GPUUniformData),
-        _gpu_properties.limits.minUniformBufferOffsetAlignment
+        _physical_device_properties.limits.minUniformBufferOffsetAlignment
     );
 
     {

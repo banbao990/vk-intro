@@ -11,6 +11,8 @@
 #include <VkBootstrap.h>
 #include <string>
 
+#include "shader.h"
+
 App::App(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :_frame_time_samples(30), _use_validation_layer(use_validation_layer) {
     _window_extent.width = width;
     _window_extent.height = height;
@@ -82,7 +84,7 @@ void App::init_vulkan(VkPhysicalDeviceShaderDrawParametersFeatures* _shader_draw
         .value();
 
     _physical_device = physical_device.physical_device;
-    _gpu_properties = physical_device.properties;
+    _physical_device_properties = physical_device.properties;
 
     // 4. VkDevice
     vkb::DeviceBuilder device_builder(physical_device);
@@ -114,11 +116,11 @@ void App::init_vulkan(VkPhysicalDeviceShaderDrawParametersFeatures* _shader_draw
 App::~App() {
     if (_is_initialized) {
         VK_CHECK(vkDeviceWaitIdle(_device));
-        flushDeletionQueueAndVulkanResources();
+        flush_deletion_queue_and_vulkan_resources();
     }
 }
 
-void App::flushDeletionQueueAndVulkanResources() {
+void App::flush_deletion_queue_and_vulkan_resources() {
     // keep the Surface, Device, Instance, and the SDL window out of the queue
     _main_deletion_queue.flush();
 

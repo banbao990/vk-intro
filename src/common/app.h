@@ -38,7 +38,7 @@ protected:
     void init_swapchain();
 
     // must be called at the end of the cleanup (deconstructor)
-    void flushDeletionQueueAndVulkanResources();
+    void flush_deletion_queue_and_vulkan_resources();
 
     std::string _name;
     uint32_t _frame_number = 0;
@@ -50,7 +50,7 @@ protected:
 
     // vulkan 
     VkPhysicalDevice _physical_device = VK_NULL_HANDLE;         // Vulkan physical device
-    VkPhysicalDeviceProperties _gpu_properties{};               // phisical device properties
+    VkPhysicalDeviceProperties _physical_device_properties{};               // phisical device properties
     VkDevice _device = VK_NULL_HANDLE;                          // Vulkan device for commands
     VkInstance _instance = VK_NULL_HANDLE;                      // Vulkan library handle
     VkDebugUtilsMessengerEXT _debug_messager = VK_NULL_HANDLE;  // Vulkan debug output handle

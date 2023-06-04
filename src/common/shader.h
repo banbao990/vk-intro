@@ -5,7 +5,7 @@
 
 class Shader {
 public:
-    Shader(VkDevice device, const char* vertex_relative_path, const char* fragment_relative_path);
+    Shader(VkDevice device, const char* vertex_relative_path = nullptr, const char* fragment_relative_path = nullptr);
     virtual ~Shader();
 
     VkShaderModule vertex() const;

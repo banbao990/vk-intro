@@ -72,7 +72,7 @@ void RasBufferApp::init_descriptors_for_uniform_data(uint32_t buffer_size) {
     VkDescriptorSetLayout unifrom_data_set_layout = _descriptors.create_set_layout(&type, &stage);
 
     // allocate buffers
-    const uint32_t padding_buffer_size = vkutils::padding(buffer_size, _gpu_properties.limits.minUniformBufferOffsetAlignment);
+    const uint32_t padding_buffer_size = vkutils::padding(buffer_size, _physical_device_properties.limits.minUniformBufferOffsetAlignment);
     const uint32_t total_buffer_size = padding_buffer_size * FRAME_OVERLAP;
     _uniform_data_buffer = create_buffer(total_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
 

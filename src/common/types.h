@@ -13,6 +13,7 @@ struct ImmediateStructure {
 struct AllocatedBuffer {
     VkBuffer _buffer = VK_NULL_HANDLE;
     VmaAllocation _allocation = VK_NULL_HANDLE;
+    VkDeviceSize _size = 0;
 };
 
 struct AllocatedImage {

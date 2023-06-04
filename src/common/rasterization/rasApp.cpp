@@ -243,7 +243,7 @@ void RasApp::basic_clean_up() {
             VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
         }
         VK_CHECK(vkDeviceWaitIdle(_device));
-        flushDeletionQueueAndVulkanResources();
+        flush_deletion_queue_and_vulkan_resources();
         _is_initialized = false;
     }
 }
@@ -313,7 +313,7 @@ void RasApp::init_render_pass() {
 
 void RasApp::init_framebuffers() {
     // create the framebuffers for the swapchain images.
-        // This will connect the render-pass to the images for rendering
+    // This will connect the render-pass to the images for rendering
     VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass, _window_extent);
 
     // grab how many images we have in the swapchain

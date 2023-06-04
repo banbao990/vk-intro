@@ -2,7 +2,7 @@
 #include <iostream>
 
 #define main SDL_main
-#include "app.h"
+#include "../common/app.h"
 
 int main(int argc, char **argv) {
     try {

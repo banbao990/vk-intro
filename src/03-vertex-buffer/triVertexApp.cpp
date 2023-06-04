@@ -1,5 +1,5 @@
 #include "triVertexApp.h"
-#include "initializers.h"
+#include "../common/initializers.h"
 
 TriVertexApp::~TriVertexApp() {
     basic_clean_up();

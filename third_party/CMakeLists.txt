@@ -11,7 +11,7 @@ add_library(tinyobjloader STATIC)
 target_sources(vkbootstrap PRIVATE 
     vkbootstrap/VkBootstrap.h
     vkbootstrap/VkBootstrap.cpp
-    )
+)
 
 target_include_directories(vkbootstrap PUBLIC vkbootstrap)
 target_link_libraries(vkbootstrap PUBLIC Vulkan::Vulkan $<$<BOOL:UNIX>:${CMAKE_DL_LIBS}>)
@@ -23,19 +23,23 @@ target_include_directories(glm INTERFACE glm)
 target_sources(tinyobjloader PRIVATE 
     tinyobjloader/tiny_obj_loader.h
     tinyobjloader/tiny_obj_loader.cc
-    )
+)
 
 target_include_directories(tinyobjloader PUBLIC tinyobjloader)
 
-# if install in windows
-#add_library(sdl2 INTERFACE)
-#target_link_directories(sdl2 INTERFACE "$ENV{VULKAN_SDK}/Lib")
-#target_link_libraries(sdl2 INTERFACE SDL2 SDL2main)
-
-add_subdirectory(SDL)
-add_library(sdl2 INTERFACE)
-target_include_directories(sdl2 INTERFACE "SDL/include")
-target_link_libraries(sdl2 INTERFACE SDL2::SDL2main SDL2::SDL2-static)
+if(${USE_THIRD_PARTY_SDL})
+    # (1) add SDL from the directory "third-party"
+    add_subdirectory(SDL)
+    add_library(sdl2 INTERFACE)
+    target_include_directories(sdl2 INTERFACE "SDL/include")
+    target_link_libraries(sdl2 INTERFACE SDL2::SDL2main SDL2::SDL2-static)
+else()
+    # (2) if install in windows
+    add_library(sdl2 INTERFACE)
+    target_include_directories(sdl2 INTERFACE "$ENV{VULKAN_SDK}/include/SDL2")
+    target_link_directories(sdl2 INTERFACE "$ENV{VULKAN_SDK}/Lib")
+    target_link_libraries(sdl2 INTERFACE SDL2 SDL2main)
+endif()
 
 add_library(imgui STATIC)
 
@@ -53,7 +57,7 @@ target_sources(imgui PRIVATE
     imgui/imgui_impl_sdl2.cpp
 
     imgui/imgui_tables.cpp
-    )
+)
 
 target_link_libraries(imgui PUBLIC Vulkan::Vulkan sdl2)
 

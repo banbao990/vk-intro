@@ -7,8 +7,12 @@
 #include <string>
 
 Shader::Shader(VkDevice device, const char* vertex_relative_path, const char* fragment_relative_path) :_device(device) {
-    _vertex_shader = load_shader_module(device, vertex_relative_path);
-    _fragment_shader = load_shader_module(device, fragment_relative_path);
+    if (vertex_relative_path) {
+        _vertex_shader = load_shader_module(device, vertex_relative_path);
+    }
+    if (_fragment_shader) {
+        _fragment_shader = load_shader_module(device, fragment_relative_path);
+    }
 }
 
 Shader::~Shader() {
@@ -30,7 +34,7 @@ VkShaderModule Shader::load_shader_module(VkDevice device, const char* file_rela
     std::string file_path = std::string(SHADER_DIRECTORY"/") + file_relative_path;
     std::ifstream file(file_path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
-        std::cerr << "[Shader Loading] Shadee file not found: " << file_path << std::endl;
+        std::cerr << "[Shader Loading] Shader file not found: " << file_path << std::endl;
         return VK_NULL_HANDLE;
     }
 

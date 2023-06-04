@@ -25,8 +25,6 @@ add_library(${pro_name}
     config.h
 )
 
-add_subdirectory(rasterization)
-
 set_property(TARGET ${pro_name} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${pro_name}>")
 
 target_include_directories(${pro_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -35,3 +33,6 @@ target_link_libraries(${pro_name} vkbootstrap vma glm tinyobjloader imgui stb_im
 target_link_libraries(${pro_name} Vulkan::Vulkan sdl2)
 
 add_dependencies(${pro_name} Shaders)
+
+add_subdirectory(rasterization)
+add_subdirectory(rt)
