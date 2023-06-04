@@ -15,10 +15,12 @@
 // resource locations
 #define SWS_SCENE_AS_SET                0
 #define SWS_SCENE_AS_BINDING            0
-#define SWS_RESULT_IMAGE_SET            0
-#define SWS_RESULT_IMAGE_BINDING        1
 #define SWS_CAMDATA_SET                 0
-#define SWS_CAMDATA_BINDING             2
+#define SWS_CAMDATA_BINDING             1
+#define SWS_RESULT_IMAGE_SET            0
+#define SWS_RESULT_IMAGE_BINDING        2
+#define SWS_ACCUMULATED_IMAGE_SET       0
+#define SWS_ACCUMULATED_IMAGE_BINDING   3
 
 #define SWS_MATIDS_SET                  1
 #define SWS_ATTRIBS_SET                 2
@@ -66,6 +68,10 @@ struct UniformParams {
     vec4 camUp;
     vec4 camSide;
     vec4 camNearFarFov;
+
+    // spp
+    int accumulate_spp;
+    int random_seed;
 };
 
 

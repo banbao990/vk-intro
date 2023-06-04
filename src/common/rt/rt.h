@@ -135,7 +135,8 @@ protected:
     std::vector<VkDescriptorSetLayout> _rt_set_layout{};
     std::vector<VkDescriptorSet> _rt_set{};
 
-    FrameBufferAttachment _offscreen_image{};
+    // one for result, one for accumulate
+    std::vector<FrameBufferAttachment> _offscreen_image{};
 
     VkPipeline _rt_pipeline = VK_NULL_HANDLE;
     VkPipelineLayout _rt_pipeline_layout = VK_NULL_HANDLE;
@@ -149,14 +150,17 @@ protected:
 
     LoaderManager* _loader_manager;
 
+    uint32_t _spp{ 0 };
+    std::chrono::high_resolution_clock::time_point _time_start{};
+
     // camera & user input
     Camera                          mCamera{};
-    bool                            mCameraEnable{ true };
+    bool                            mCameraEnable{ false };
     bool                            mWKeyDown{ false };
     bool                            mAKeyDown{ false };
     bool                            mSKeyDown{ false };
     bool                            mDKeyDown{ false };
-    bool                            mShiftDown{ false };
+    bool                            mCtrlDown{ false };
     bool                            mLMBDown{ false };
     vec2                            mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};

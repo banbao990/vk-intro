@@ -7,8 +7,9 @@
 
 layout(set = SWS_ENVS_SET, binding = 0) uniform sampler2D EnvTexture;
 
-layout(set = SWS_SCENE_AS_SET,     binding = SWS_SCENE_AS_BINDING)            uniform accelerationStructureEXT Scene;
-layout(set = SWS_RESULT_IMAGE_SET, binding = SWS_RESULT_IMAGE_BINDING, rgba8) uniform image2D ResultImage;
+layout(set = SWS_SCENE_AS_SET,          binding = SWS_SCENE_AS_BINDING)                 uniform accelerationStructureEXT Scene;
+layout(set = SWS_RESULT_IMAGE_SET,      binding = SWS_RESULT_IMAGE_BINDING, rgba8)      uniform image2D ResultImage;
+layout(set = SWS_ACCUMULATED_IMAGE_SET, binding = SWS_ACCUMULATED_IMAGE_BINDING, rgba8) uniform image2D AccumulatedImage;
 
 layout(set = SWS_CAMDATA_SET,      binding = SWS_CAMDATA_BINDING, std140)     uniform AppData {
     UniformParams Params;
@@ -42,6 +43,45 @@ vec2 DirToLatLong(vec3 dir) {
     return vec2((MY_PI + phi) * (0.5 / MY_PI), theta * MY_INV_PI);
 }
 
+// randam sampler start
+const float RAND_2_1 = 1.0f / 4294967296.0f;
+
+float rand_lcg(inout uint rng_state) {
+    // LCG values from Numerical Recipes
+    rng_state = 1664525 * rng_state + 1013904223;
+    return rng_state * RAND_2_1;
+}
+
+float rand_xorshift(inout uint rng_state) {
+    // Xorshift algorithm from George Marsaglia's paper
+    rng_state ^= (rng_state << 13);
+    rng_state ^= (rng_state >> 17);
+    rng_state ^= (rng_state << 5);
+    return rng_state * RAND_2_1;
+}
+
+float rand_whash(inout uint seed) {
+    seed = (seed ^ 61) ^ (seed >> 16);
+    seed *= 9;
+    seed = seed ^ (seed >> 4);
+    seed *= 0x27d4eb2d;
+    seed = seed ^ (seed >> 15);
+    return seed * RAND_2_1;
+}
+
+vec3 random_cosine_direction(inout uint wseed) {
+    float r1 = rand_whash(wseed);
+    float r2 = rand_whash(wseed);
+    float z = sqrt(1 - r2);
+
+    float phi = MY_PI * 2 * r1;
+    float x = cos(phi) * sqrt(r2);
+    float y = sin(phi) * sqrt(r2);
+    return vec3(x, y, z);
+}
+
+// random sampler end
+
 
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
@@ -56,15 +96,17 @@ void main() {
 
     const uint rayFlags = gl_RayFlagsOpaqueEXT;
     const uint shadowRayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT;
-
     const uint cullMask = 0xFF;
-
     const uint stbRecordStride = 1;
 
     const float tmin = 0.0f;
     const float tmax = Params.camNearFarFov.y;
 
-    vec3 finalColor = vec3(0.0f);
+    vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
+    float throughout_pdf = 1.0f;
+    vec3 finalColor = vec3(0.0f, 0.0f, 0.0f);
+
+    uint wseed = gl_LaunchIDEXT.x * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.y + Params.random_seed;
 
     for (int i = 0; i < SWS_MAX_RECURSION; ++i) {
         traceRayEXT(Scene,
@@ -84,7 +126,7 @@ void main() {
 
         // if hit background - quit
         if (hitDistance < 0.0f) {
-            finalColor += hitColor;
+            finalColor += throughput * hitColor;
             break;
         } else {
             const vec3 hitNormal = PrimaryRay.normalAndObjId.xyz;
@@ -115,33 +157,42 @@ void main() {
 
                 origin = hitPos + direction * 0.001f;
                 direction = refract(direction, refrNormal, refrEta);
+            } else if (objectId == OBJECT_ID_LIGHT) {
+                // hit light
+                finalColor += hitColor * throughput / throughout_pdf;
             } else {
+                
                 // we hit diffuse primitive - simple lambertian
-
                 const vec3 toLight = normalize(Params.sunPosAndAmbient.xyz);
                 const vec3 shadowRayOrigin = hitPos + hitNormal * 0.001f;
 
-                traceRayEXT(Scene,
-                            shadowRayFlags,
-                            cullMask,
-                            SWS_SHADOW_HIT_SHADERS_IDX,
-                            stbRecordStride,
-                            SWS_SHADOW_MISS_SHADERS_IDX,
-                            shadowRayOrigin,
-                            0.0f,
-                            toLight,
-                            tmax,
-                            SWS_LOC_SHADOW_RAY);
+                const vec3 localDirection = random_cosine_direction(wseed);
+                const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
 
-                const float lighting = (ShadowRay.distance > 0.0f) ? Params.sunPosAndAmbient.w : max(Params.sunPosAndAmbient.w, dot(hitNormal, toLight));
+                // dirty implement
+                mat3 local2world;
+                const vec3 normal01 = normalize(hitNormal);
+                const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+                local2world[2] = normal01;
+                local2world[1] = normalize(cross(normal01, a));
+                local2world[0] = cross(normal01, local2world[1]);
+                // dirty implment
 
-                finalColor += hitColor * lighting;
-
-                break;
+                origin = hitPos + hitNormal * 0.001f;
+                direction = local2world * localDirection;
+                throughput *= pdf * hitColor;
+                throughout_pdf *= pdf;
             }
         }
     }
-    //finalColor = textureLod(EnvTexture, DirToLatLong(direction), 0).rgb;
+
+    // finalColor = textureLod(EnvTexture, DirToLatLong(direction), 0).rgb;
+    uint spp = Params.accumulate_spp;
+    if(spp != 1) {
+        finalColor = (finalColor + (spp-1) * imageLoad(AccumulatedImage, ivec2(gl_LaunchIDEXT.xy)).rgb) / spp;
+    }
+    
+    imageStore(AccumulatedImage, ivec2(gl_LaunchIDEXT.xy), vec4(finalColor, 1.0f));
     finalColor = LinearToSrgb(finalColor);
     imageStore(ResultImage, ivec2(gl_LaunchIDEXT.xy), vec4(finalColor, 1.0f));
 }

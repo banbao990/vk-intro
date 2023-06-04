@@ -98,6 +98,11 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
 
     // ui start
     ImGui::Text("FPS: %.2f", fps());
+    ImGui::Text("SPP: %d", _spp);
+    using Duration = std::chrono::duration<float>;
+    auto delta = std::chrono::duration_cast<Duration>(_frame_time_samples.back() - _time_start);
+
+    ImGui::Text("Time Elapsed: %.2f", delta.count());
     int id = 0;
     if (ImGui::CollapsingHeader("Camera")) {
         ++id;
@@ -191,15 +196,21 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
         auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(_frame_time_samples.back() - mLastRec);
         dt = delta.count() / 2.0f;
     }
-    moveDelta *= sMoveSpeed * dt * (mShiftDown ? sAccelMult : 1.0f);
+    moveDelta *= sMoveSpeed * dt * (mCtrlDown ? sAccelMult : 1.0f);
     mCamera.Move(moveDelta.x, moveDelta.y);
+
+    if (mCamera.IsCameraChanged()) {
+        _spp = 1;
+        _time_start = _frame_time_samples.back();
+    }
 
     uniform_data.camPos = vec4(mCamera.GetPosition(), 0.0f);
     uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
     uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
     uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
     uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane(), Deg2Rad(mCamera.GetFovY()), 0.0f);
-
+    uniform_data.accumulate_spp = _spp;
+    uniform_data.random_seed = rand();
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -211,10 +222,19 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     // wait for offscreen image
     // TODO: need more specific cmd stage
     rt_utils::image_barrier(cmd,
-        _offscreen_image._image._image,
+        _offscreen_image[0]._image._image,
         subresource_range,
         0,
         VK_ACCESS_SHADER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_UNDEFINED,
+        VK_IMAGE_LAYOUT_GENERAL
+    );
+
+    rt_utils::image_barrier(cmd,
+        _offscreen_image[1]._image._image,
+        subresource_range,
+        0,
+        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         VK_IMAGE_LAYOUT_UNDEFINED,
         VK_IMAGE_LAYOUT_GENERAL
     );
@@ -248,7 +268,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     // copy to swapchain
     // TODO: need more specific cmd stage
     rt_utils::image_barrier(cmd,
-        _offscreen_image._image._image,
+        _offscreen_image[0]._image._image,
         subresource_range,
         VK_ACCESS_SHADER_WRITE_BIT,
         VK_ACCESS_TRANSFER_READ_BIT,
@@ -273,7 +293,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     copy_region.dstOffset = { 0, 0, 0 };
     copy_region.extent = { _window_extent.width, _window_extent.height, 1 };
     vkCmdCopyImage(cmd,
-        _offscreen_image._image._image,
+        _offscreen_image[0]._image._image,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         swap,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -314,11 +334,15 @@ void RTApp::run() {
     // deal with SDL event
     SDL_Event e;
     bool b_quit = false;
+    _spp = 0;
+    _time_start = std::chrono::high_resolution_clock::now();
 
     // main loop
     while (!b_quit) {
         // FPS
         _frame_time_samples.push(std::chrono::high_resolution_clock::now());
+
+        mCamera.SetCameraUnChanged();
 
         // Handle events on queue
         while (SDL_PollEvent(&e) != 0) {
@@ -330,6 +354,8 @@ void RTApp::run() {
 }
 
 void RTApp::init_per_frame() {
+    ++_spp;
+
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame(_window);
     ImGui::NewFrame();
@@ -380,9 +406,9 @@ bool RTApp::deal_with_sdl_event(SDL_Event& e) {
         case SDLK_s: mSKeyDown = true; break;
         case SDLK_d: mDKeyDown = true; break;
 
-        case SDLK_LSHIFT:
-        case SDLK_RSHIFT:
-            mShiftDown = true;
+        case SDLK_LCTRL:
+        case SDLK_RCTRL:
+            mCtrlDown = true;
             break;
         }
     }
@@ -394,9 +420,9 @@ bool RTApp::deal_with_sdl_event(SDL_Event& e) {
         case SDLK_s: mSKeyDown = false; break;
         case SDLK_d: mDKeyDown = false; break;
 
-        case SDLK_LSHIFT:
-        case SDLK_RSHIFT:
-            mShiftDown = false;
+        case SDLK_LCTRL:
+        case SDLK_RCTRL:
+            mCtrlDown = false;
             break;
         }
     }
@@ -824,35 +850,41 @@ void RTApp::init_offscreen_image() {
         _window_extent.height,
         1
     };
+    
+    _offscreen_image.resize(2);
+    std::vector<VkImageUsageFlags> usage_flags = {
+        { VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT },
+        { VK_IMAGE_USAGE_STORAGE_BIT }
+    };
+    
+    for (int i = 0; i < _offscreen_image.size(); ++i) {
+        FrameBufferAttachment& attach = _offscreen_image[i];
+        AllocatedImage& image = attach._image;
+        attach._format = _swapchain_image_format;
 
-    FrameBufferAttachment& attach = _offscreen_image;
-    AllocatedImage& image = attach._image;
-    attach._format = _swapchain_image_format;
+        VkImageCreateInfo image_info = vkinit::image_create_info(attach._format, usage_flags[i], image_extent);
+        image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 
-    VkImageUsageFlags usage_flags = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
+        VmaAllocationCreateInfo alloc_info = {};
+        // only in GPU
+        alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+        alloc_info.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image, &image._allocation, nullptr));
 
-    VkImageCreateInfo image_info = vkinit::image_create_info(attach._format, usage_flags, image_extent);
-    image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
+        VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
+        VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(attach._format, image._image, aspect_mask);
+        VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &attach._image_view));
 
-    VmaAllocationCreateInfo alloc_info = {};
-    // only in GPU
-    alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    alloc_info.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image, &image._allocation, nullptr));
+        _main_deletion_queue.push_function(
+            [=]() {
+                FrameBufferAttachment& attach = _offscreen_image[i];
+                AllocatedImage& image = attach._image;
 
-    VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
-    VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(attach._format, image._image, aspect_mask);
-    VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &attach._image_view));
-
-    _main_deletion_queue.push_function(
-        [=]() {
-            FrameBufferAttachment& attach = _offscreen_image;
-            AllocatedImage& image = attach._image;
-
-            vkDestroyImageView(_device, attach._image_view, nullptr);
-            vmaDestroyImage(_allocator, image._image, image._allocation);
-        }
-    );
+                vkDestroyImageView(_device, attach._image_view, nullptr);
+                vmaDestroyImage(_allocator, image._image, image._allocation);
+            }
+        );
+    }
 }
 
 void RTApp::init_framebuffers_for_imgui() {
@@ -1167,6 +1199,8 @@ void RTApp::init_scenes() {
         );
 
         // (6) image data(the same process)
+        // TODO: !!!IMPORTANT!!! should deal with the materials is lost situation
+        std::vector<int> erase_materials{};
         for (size_t i = 0; i < materials.size(); ++i) {
             const tinyobj::material_t& src_mat = materials[i];
             RTMaterial& dst_mat = _rt_scene._materials[i];
@@ -1177,6 +1211,7 @@ void RTApp::init_scenes() {
             stbi_uc* pixels = stbi_load(full_texture_path.c_str(), &width, &height, &channels, STBI_rgb_alpha); // force RGBA
             if (!pixels) {
                 std::cout << "[Image]: Failed to load " << full_texture_path << std::endl;
+                erase_materials.push_back(i);
                 continue;
             }
             int image_size = width * height * 4; // RGBA
@@ -1265,6 +1300,9 @@ void RTApp::init_scenes() {
 
             // staging buffer
             vmaDestroyBuffer(_allocator, staging_buffer._buffer, staging_buffer._allocation);
+        }
+        for (int i = 0; i < erase_materials.size(); ++i) {
+            _rt_scene._materials.erase(_rt_scene._materials.begin() + erase_materials[i] + i);
         }
     }
 
@@ -1431,14 +1469,17 @@ void RTApp::init_descriptors() {
 
     // First set:
     //  binding 0  ->  AS
-    //  binding 1  ->  output image
-    //  binding 2  ->  Camera data
+    //  binding 1  ->  Camera data
+    //  binding 2  ->  output image
+    //  binding 3  ->  accumulated image
     VkDescriptorType types0[] = {
         VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
-        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
     };
     VkShaderStageFlags stages0[] = {
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
@@ -1446,9 +1487,10 @@ void RTApp::init_descriptors() {
 
     // binding number is ascending
     // SWS_SCENE_AS_BINDING     : 0
-    // SWS_RESULT_IMAGE_BINDING : 1
-    // SWS_CAMDATA_BINDING      : 2
-    _rt_set_layout[SWS_SCENE_AS_SET] = _descriptors.create_set_layout(types0, stages0, 3);
+    // SWS_CAMDATA_BINDING      : 1
+    // SWS_RESULT_IMAGE_BINDING : 2
+    // SWS_ACCUMULATED_IMAGE_BINDING : 3
+    _rt_set_layout[SWS_SCENE_AS_SET] = _descriptors.create_set_layout(types0, stages0, 4);
 
     // Second set:
     //  binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
@@ -1506,8 +1548,9 @@ void RTApp::update_descriptors() {
     std::vector<VkWriteDescriptorSet> write_sets{};
     // First set:
     //  binding 0  ->  AS
-    //  binding 1  ->  output image
-    //  binding 2  ->  Camera data
+    //  binding 1  ->  Camera data
+    //  binding 2  ->  output image
+    //  binding 3  ->  accumulated image
     VkWriteDescriptorSetAccelerationStructureKHR descriptor_as_info = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR, nullptr };
     descriptor_as_info.accelerationStructureCount = 1;
     descriptor_as_info.pAccelerationStructures = &_rt_scene._tlas._acceleration_structure;
@@ -1521,15 +1564,6 @@ void RTApp::update_descriptors() {
     write_sets.push_back(ws);
     // binding 0 end
 
-    VkDescriptorImageInfo res_image_info = {};
-    res_image_info.sampler = VK_NULL_HANDLE;
-    res_image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
-    res_image_info.imageView = _offscreen_image._image_view;
-
-    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, _rt_set[SWS_SCENE_AS_SET], &res_image_info, SWS_RESULT_IMAGE_BINDING);
-    write_sets.push_back(ws);
-    // binding 1 end
-
     // TODO: only 1 buffer, do not need alignment
     const uint32_t padding_buffer_size = vkutils::padding(sizeof(UniformParams), _physical_device_properties.limits.minUniformBufferOffsetAlignment);
     const uint32_t total_buffer_size = padding_buffer_size;
@@ -1542,7 +1576,24 @@ void RTApp::update_descriptors() {
 
     ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _rt_set[SWS_SCENE_AS_SET], &uniform_data_info, SWS_CAMDATA_BINDING);
     write_sets.push_back(ws);
+    // binding 1 end
+
+    VkDescriptorImageInfo res_image_info = {};
+    res_image_info.sampler = VK_NULL_HANDLE;
+    res_image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    res_image_info.imageView = _offscreen_image[0]._image_view;
+
+    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, _rt_set[SWS_RESULT_IMAGE_SET], &res_image_info, SWS_RESULT_IMAGE_BINDING);
+    write_sets.push_back(ws);
     // binding 2 end
+
+    VkDescriptorImageInfo accu_image_info = {};
+    accu_image_info.sampler = VK_NULL_HANDLE;
+    accu_image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
+    accu_image_info.imageView = _offscreen_image[1]._image_view;
+    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, _rt_set[SWS_ACCUMULATED_IMAGE_SET], &accu_image_info, SWS_ACCUMULATED_IMAGE_BINDING);
+    write_sets.push_back(ws);
+    // binding 3 end
 
     // Second set:
     //  binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)

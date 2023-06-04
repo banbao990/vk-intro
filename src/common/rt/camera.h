@@ -26,6 +26,8 @@ public:
     const vec3& GetDirection() const;
     const vec3  GetUp() const;
     const vec3  GetSide() const;
+    const bool  IsCameraChanged() const;
+    void        SetCameraUnChanged();
 
 private:
     void        MakeProjection();
@@ -41,4 +43,5 @@ private:
     quat    mRotation;
     mat4    mProjection;
     mat4    mTransform;
+    bool    mChanged;
 };

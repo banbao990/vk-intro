@@ -1,6 +1,8 @@
 #include "camera.h"
 
+#define EPS (1e-7f)
 static const vec3 sCameraUp(0.0f, 1.0f, 0.0f);
+#include <iostream>
 
 Camera::Camera()
     : mFovY(65.0f)
@@ -42,6 +44,9 @@ void Camera::LookAt(const vec3& pos, const vec3& target) {
 }
 
 void Camera::Move(const float side, const float direction) {
+    if (std::abs(side) > EPS || std::abs(direction) > EPS) {
+        mChanged = true;
+    }
     vec3 cameraSide = normalize(cross(mDirection, sCameraUp));
 
     mPosition += cameraSide * side;
@@ -51,6 +56,10 @@ void Camera::Move(const float side, const float direction) {
 }
 
 void Camera::Rotate(const float angleX, const float angleY) {
+    if (std::abs(angleX) > EPS || std::abs(angleY) > EPS) {
+        mChanged = true;
+    }
+
     vec3 side = cross(mDirection, sCameraUp);
     quat pitchQ = QAngleAxis(Deg2Rad(angleY), side);
     quat headingQ = QAngleAxis(Deg2Rad(angleX), sCameraUp);
@@ -105,4 +114,12 @@ void Camera::MakeProjection() {
 
 void Camera::MakeTransform() {
     mTransform = MatLookAt(mPosition, mPosition + mDirection, sCameraUp);
+}
+
+const bool  Camera::IsCameraChanged() const {
+    return mChanged;
+}
+
+void Camera::SetCameraUnChanged() {
+    mChanged = false;
 }
