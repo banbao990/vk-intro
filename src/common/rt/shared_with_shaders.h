@@ -21,6 +21,12 @@
 #define SWS_RESULT_IMAGE_BINDING        2
 #define SWS_ACCUMULATED_IMAGE_SET       0
 #define SWS_ACCUMULATED_IMAGE_BINDING   3
+#define SWS_RADIANCE_CACHE_SET          0
+#define SWS_RADIANCE_CACHE_BINDING      4
+#define SWS_STREE_SET                   0
+#define SWS_STREE_BINDING               5
+#define SWS_DTREE_SET                   0
+#define SWS_DTREE_BINDING               6
 
 #define SWS_MATIDS_SET                  1
 #define SWS_ATTRIBS_SET                 2
@@ -40,8 +46,31 @@
 #define OBJECT_ID_BUNNY                 0.0f
 #define OBJECT_ID_PLANE                 1.0f
 #define OBJECT_ID_TEAPOT                2.0f
-#define OBJECT_ID_LIGHT                 3.0f
+#define OBJECT_ID_LIGHT                 7.0f
+#define OBJECT_ID_RING                  4.0f
 
+
+#define RECORD_NUM 8
+
+
+#define BB_PI (3.141592653589793f)
+#define BB_PI2 (BB_PI * 2.0f)
+#define BB_PI_DIV_2 (BB_PI * 0.5f)
+
+struct RadianceCache {
+    vec4 p;// x, y, z, radiance
+    vec4 d;// theta, phi, no use, no use;
+};
+
+struct RecordPerPixel {
+#ifdef __cplusplus
+    alignas(4) int num;
+    alignas(16) RadianceCache record[RECORD_NUM];
+#else
+    int num;
+    RadianceCache record[RECORD_NUM];
+#endif
+};
 
 struct RayPayload {
     vec4 colorAndDist;
@@ -72,6 +101,13 @@ struct UniformParams {
     // spp
     int accumulate_spp;
     int random_seed;
+
+    float light_strength;
+    int light_id;
+    int glass_id;
+    int mirror_id;
+    int ppg_train_on;
+    int ppg_test_on;
 };
 
 

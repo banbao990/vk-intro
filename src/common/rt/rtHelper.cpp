@@ -117,6 +117,7 @@ void RTScene::build_blas(VkDevice device, VmaAllocator allocator, RTApp* app) {
     for (const auto& size_info : size_infos) {
         max_blas_size = std::max(size_info.buildScratchSize, max_blas_size);
     }
+    max_blas_size += app->get_min_acceleration_structure_scratch_offset_alignment();
 
     // just for staging, need it to build blas
     AllocatedBuffer scratch_buffer = rt_utils::create_buffer(allocator, max_blas_size,
@@ -150,7 +151,10 @@ void RTScene::build_blas(VkDevice device, VmaAllocator allocator, RTApp* app) {
 
                 loader_manager->vkCreateAccelerationStructureKHR(device, &create_info, nullptr, &mesh._blas._acceleration_structure);
 
+                // aligned VkPhysicalDeviceAccelerationStructurePropertiesKHR::minAccelerationStructureScratchOffsetAlignment
                 build_info.scratchData = rt_utils::get_buffer_device_address(device, scratch_buffer._buffer);
+                build_info.scratchData.deviceAddress = vkutils::padding(build_info.scratchData.deviceAddress, app->get_min_acceleration_structure_scratch_offset_alignment());
+
                 build_info.srcAccelerationStructure = VK_NULL_HANDLE;
                 build_info.dstAccelerationStructure = mesh._blas._acceleration_structure;
 

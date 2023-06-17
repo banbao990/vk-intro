@@ -24,6 +24,7 @@
 #include "sbtHelper.h"
 #include "rtHelper.h"
 #include "camera.h"
+#include "ppg.h"
 
 #define NAME(X) #X
 #define OUTPUT_KV(X) {                                                      \
@@ -33,6 +34,8 @@
 
 class RTApp {
 public:
+    bool __ppg_on{false};
+
     RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer);
     virtual ~RTApp();
 
@@ -110,7 +113,6 @@ protected:
     void init_pipeline();
     void init_sync_structures();
     void init_scenes();
-    void render();
 
     void init_commands_for_graphics_pipeline();
     void init_sync_structures_for_graphics_pass();
@@ -130,8 +132,13 @@ protected:
     Descriptor _descriptors{};
     AllocatedBuffer _uniform_data_buffer{};
 
+    uint32_t _radiance_cache_buffer_size{};
+    AllocatedBuffer _radiance_cache_gpu{};
+    AllocatedBuffer _radiance_cache_cpu{};
+
     // Ray Tracing
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR _rt_properties{};
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR _as_property{};
     std::vector<VkDescriptorSetLayout> _rt_set_layout{};
     std::vector<VkDescriptorSet> _rt_set{};
 
@@ -150,7 +157,12 @@ protected:
 
     LoaderManager* _loader_manager;
 
+    bool ___test{ false };
     uint32_t _spp{ 0 };
+    int _light_id{ 100 };
+    int _glass_id{ 100 };
+    int _mirror_id{ 100 };
+    float _light_strength{ 1.0f };
     std::chrono::high_resolution_clock::time_point _time_start{};
 
     // camera & user input
@@ -165,7 +177,21 @@ protected:
     vec2                            mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};
 
+
+    // ppg
+    bool _ppg_train_on{ false };
+    bool _ppg_test_on{ false };
+    std::vector<STree> _stree{};
+    std::vector<DTree> _dtree{};
+    uint32_t _stree_buffer_size{};
+    uint32_t _dtree_buffer_size{};
+    AllocatedBuffer _stree_gpu{};
+    AllocatedBuffer _stree_cpu{};
+    AllocatedBuffer _dtree_gpu{};
+    AllocatedBuffer _dtree_cpu{};
+
 public:
     void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
     void add_to_deletion_queue(std::function<void()>&& function);
+    uint32_t get_min_acceleration_structure_scratch_offset_alignment();
 };

@@ -10,6 +10,8 @@
 #include "tiny_obj_loader.h"
 #include "rtHelper.h"
 
+#include <algorithm>
+
 static const float sMoveSpeed = 2.0f;
 static const float sAccelMult = 5.0f;
 static const float sRotateSpeed = 0.25f;
@@ -108,8 +110,41 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ++id;
         ImGui::PushID(id);
         ImGui::Checkbox("Enable Camera", &mCameraEnable);
+        ImGui::Text("position: %.3f, %.3f, %.3f", mCamera.GetPosition()[0], mCamera.GetPosition()[1], mCamera.GetPosition()[2]);
+        ImGui::Text("target: %.3f, %.3f, %.3f", mCamera.GetDirection()[0]+ mCamera.GetPosition()[0], mCamera.GetDirection()[1]+ mCamera.GetPosition()[1], mCamera.GetDirection()[2]+ mCamera.GetPosition()[2]);
+        ImGui::Text("direction: %.3f, %.3f, %.3f", mCamera.GetDirection()[0], mCamera.GetDirection()[1], mCamera.GetDirection()[2]);
+        ImGui::Text("side: %.3f, %.3f, %.3f", mCamera.GetSide()[0], mCamera.GetSide()[1], mCamera.GetSide()[2]);
         ImGui::PopID();
     }
+
+    if (ImGui::CollapsingHeader("Light")) {
+        ++id;
+        ImGui::PushID(id);
+        ImGui::SliderFloat("Light Strength", &_light_strength, 0.1f, 10.0f);
+        int temp = _light_id;
+        ImGui::SliderInt("Light ID", &_light_id, 0, 20);
+        if (temp != _light_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
+        temp = _glass_id;
+        ImGui::SliderInt("Glass ID", &_glass_id, 0, 20);
+        if (temp != _glass_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
+        temp = _mirror_id;
+        ImGui::SliderInt("Mirror ID", &_mirror_id, 0, 20);
+        
+        if (temp != _mirror_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
+        ImGui::PopID();
+    }
+    if (ImGui::CollapsingHeader("PPG")) {
+        ImGui::Checkbox("PPG On", &__ppg_on);
+        if (STree::__node_index > 1000) {
+            _ppg_train_on = false;
+        }
+        ImGui::Checkbox("PPG Training", &_ppg_train_on);
+        ImGui::Checkbox("PPG Testing", &_ppg_test_on);
+        ImGui::Text("STree nodes: %d", STree::__node_index);
+        if (_ppg_train_on) { _ppg_test_on = false; }
+    }
+    ImGui::Checkbox("Test", &___test);
+
 
     // ui end
 
@@ -175,6 +210,76 @@ void RTApp::init_render_pass_for_imgui() {
 }
 
 void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
+    if (__ppg_on) {
+        // update tree
+        if (_ppg_train_on) {
+            VkBufferCopy copy = {};
+            copy.srcOffset = 0;
+            copy.dstOffset = 0;
+            copy.size = _radiance_cache_buffer_size;
+            vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1, &copy);
+            {
+                void* data;
+                vmaMapMemory(_allocator, _radiance_cache_cpu._allocation, &data);
+                STree* s_root = _stree.data();
+                DTree* d_root = _dtree.data();
+                RecordPerPixel* d = static_cast<RecordPerPixel*>(data);
+                const uint32_t windows_size = _window_extent.width * _window_extent.height;
+                for (uint32_t i = 0; i < windows_size; ++i) {
+                    if (d->num != 0) {
+                        for (int num_idx = 0; num_idx < d->num; ++num_idx) {
+                            auto& pos = d->record[i].p;
+                            auto& dir = d->record[i].d;
+                            int index = s_root->find_index(0, 0, { pos[0],pos[1],pos[2] });
+                            int dtree_index = DTree::get_root_index_by_STree_index(index);
+
+                            d_root[dtree_index].fill(dtree_index,
+                                (dir[0] + BB_PI_DIV_2) / BB_PI, (dir[1] + BB_PI) / BB_PI2,
+                                10.0f, { {0.0,1.0f},{0.0f,1.0f} });
+                        }
+                    }
+                }
+                for (int i = 0; i <= STree::__node_index; ++i) {
+                    int dtree_index = DTree::get_root_index_by_STree_index(i);
+                    if (d_root[dtree_index]._flux) {
+                        d_root[dtree_index].update(dtree_index, 0);
+                    }
+                }
+                s_root->update(0, 0, 20000);
+                vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
+            }
+        }
+        if (_ppg_test_on) {
+            static bool first = true;
+            if (!first) {
+            } else {
+                {
+                    first = !first;
+                    void* data;
+                    vmaMapMemory(_allocator, _dtree_cpu._allocation, &data);
+                    memcpy(data, _dtree.data(), _dtree_buffer_size);
+                    vmaUnmapMemory(_allocator, _dtree_cpu._allocation);
+
+                    VkBufferCopy copy = {};
+                    copy.srcOffset = 0;
+                    copy.dstOffset = 0;
+                    copy.size = _dtree_buffer_size;
+                    vkCmdCopyBuffer(cmd, _dtree_cpu._buffer, _dtree_gpu._buffer, 1, &copy);
+                }
+                {
+                    void* data;
+                    vmaMapMemory(_allocator, _stree_cpu._allocation, &data);
+                    memcpy(data, _stree.data(), _stree_buffer_size);
+                    vmaUnmapMemory(_allocator, _stree_cpu._allocation);
+                    VkBufferCopy copy = {};
+                    copy.srcOffset = 0;
+                    copy.dstOffset = 0;
+                    copy.size = _stree_buffer_size;
+                    vkCmdCopyBuffer(cmd, _stree_cpu._buffer, _stree_gpu._buffer, 1, &copy);
+                }
+            }
+        }
+    }
     // update params
     UniformParams uniform_data = {};
     uniform_data.sunPosAndAmbient = vec4(sSunPos, sAmbientLight);
@@ -208,9 +313,15 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
     uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
     uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
-    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane(), Deg2Rad(mCamera.GetFovY()), 0.0f);
+    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane()*100, Deg2Rad(mCamera.GetFovY()), 0.0f);
     uniform_data.accumulate_spp = _spp;
     uniform_data.random_seed = rand();
+    uniform_data.light_strength = _light_strength;
+    uniform_data.light_id = _light_id;
+    uniform_data.glass_id = _glass_id;
+    uniform_data.mirror_id = _mirror_id;
+    uniform_data.ppg_train_on = __ppg_on && _ppg_train_on;
+    uniform_data.ppg_test_on = __ppg_on && _ppg_test_on;
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -262,9 +373,10 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     };
 
     VkStridedDeviceAddressRegionKHR callable_region = {};
-
-    _loader_manager->vkCmdTraceRaysKHR(cmd, &raygen_region, &missRegion, &hitRegion, &callable_region, _window_extent.width, _window_extent.height, 1u);
-
+    if (!(___test && _spp >= 1000)) {
+        _loader_manager->vkCmdTraceRaysKHR(cmd, &raygen_region, &missRegion, &hitRegion, &callable_region, _window_extent.width, _window_extent.height, 1u);
+    }
+    
     // copy to swapchain
     // TODO: need more specific cmd stage
     rt_utils::image_barrier(cmd,
@@ -328,8 +440,64 @@ RTApp::~RTApp() {
     basic_clean_up();
 }
 
+void test_sdtree() {
+    std::vector<STree> tmp_stree(STree::MAX_NODE);
+    std::vector<DTree> tmp_dtree(DTree::MAX_NODE * STree::MAX_NODE); // TODO: node aligned, root_idx = 0 \to root_idx = MAX_NODE - 1
+    STree::__root = tmp_dtree.data();
+    DTree::__root = tmp_dtree.data();
+
+    int xx = 0;
+    //
+    std::cout << "STree Test Start:" << std::endl;
+    STree* s_root = tmp_stree.data();
+    DTree* d_root = tmp_dtree.data();
+
+    s_root->initial_split(0, 2);
+    for (int i = 0; i <= STree::__node_index; ++i) {
+        int root_index = DTree::get_root_index_by_STree_index(i);
+        (d_root + root_index)->initial_split(root_index, 2);
+    }
+    s_root->print(0, 0);
+
+    for (int i = 0; i < 10; ++i) {
+        int index = s_root->find_index(0, 0, { 0.1f,0.1f,0.1f });
+        int dtree_index = DTree::get_root_index_by_STree_index(index);
+        d_root[dtree_index].fill(dtree_index, 0.3f, 0.3f, 10.0f, { {0.0f,1.0f},{0.0f,1.0f} });
+    }
+    s_root->print(0, 0);
+    s_root->update(0, 0, 1);
+    s_root->print(0, 0);
+    //
+
+    for (int i = 0; i < 10; ++i) {
+        int dtree_index = DTree::get_root_index_by_STree_index(i);
+        if (d_root[dtree_index]._flux) {
+            d_root[dtree_index].update(dtree_index, 0);
+        }
+        d_root[dtree_index].print(dtree_index, 0);
+    }
+}
+
 void RTApp::run() {
     init();
+
+    if (__ppg_on) {
+        std::cout << "PPG On" << std::endl;
+        std::cout << "DTree Size: " << sizeof(DTree) << ", STree Size: " << sizeof(STree) << std::endl;
+
+        std::cout << "DTree Info:\n"
+            << DTree::__node_idx.size() << std::endl
+            << DTree::__node_idx.front() << std::endl
+            << DTree::__node_idx.back() << std::endl
+            << DTree::__rho << std::endl;
+
+        std::cout
+            << "sizeof(RadianceCache): " << sizeof(RadianceCache) << std::endl
+            << "sizeof(RecordPerPixel): " << sizeof(RecordPerPixel) << std::endl;
+
+        //test_sdtree();
+
+    }
 
     // deal with SDL event
     SDL_Event e;
@@ -626,6 +794,12 @@ void RTApp::init_vulkan() {
 
     _device = vkb_device.device;
 
+    // get raytracing limits
+    VkPhysicalDeviceProperties2 property_as = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
+    _as_property = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR };
+    property_as.pNext = &_as_property;
+    vkGetPhysicalDeviceProperties2(_physical_device, &property_as); // TODO: can enable all features(it and its pNext), now does not link them all
+
     // 5. Queue (for rendering)
     _graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
     _graphics_queue_family = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
@@ -657,8 +831,8 @@ void RTApp::init_swapchain() {
         .set_desired_format({ VK_FORMAT_R8G8B8A8_UNORM })
         .set_image_usage_flags(usage_flags)
         //.use_default_format_selection()
-        .set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)      // hard V-Sync
-        //.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR) // no V-Sync
+        //.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)      // hard V-Sync
+        .set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR) // no V-Sync
         .set_desired_extent(_window_extent.width, _window_extent.height)
         .build()
         .value();
@@ -783,6 +957,11 @@ void RTApp::basic_clean_up() {
     }
 }
 
+uint32_t RTApp::get_min_acceleration_structure_scratch_offset_alignment() {
+    return _as_property.minAccelerationStructureScratchOffsetAlignment;
+}
+
+
 void RTApp::add_to_deletion_queue(std::function<void()>&& function) {
     _main_deletion_queue.push_function(std::move(function));
 }
@@ -856,11 +1035,14 @@ void RTApp::init_offscreen_image() {
         { VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT },
         { VK_IMAGE_USAGE_STORAGE_BIT }
     };
-    
+
+    // high precision for storage buffer
+    std::vector<VkFormat> formats = { _swapchain_image_format, VK_FORMAT_R32G32B32A32_SFLOAT };
+
     for (int i = 0; i < _offscreen_image.size(); ++i) {
         FrameBufferAttachment& attach = _offscreen_image[i];
         AllocatedImage& image = attach._image;
-        attach._format = _swapchain_image_format;
+        attach._format = formats[i];
 
         VkImageCreateInfo image_info = vkinit::image_create_info(attach._format, usage_flags[i], image_extent);
         image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -1038,10 +1220,14 @@ void RTApp::init_scenes() {
     mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
     mCamera.SetViewPlanes(0.1f, 100.0f);
     mCamera.SetFovY(45.0f);
-    mCamera.LookAt(vec3(0.25f, 3.20f, 6.15f), vec3(0.25f, 2.75f, 5.25f));
-
+    mCamera.LookAt(vec3(0.577f,0.791f,0.744f), vec3(0.081f,1.257f,0.011f));
+    _light_id = 7;
+    _glass_id = 10;
+    _mirror_id = 13;
     // load scenes
-    std::string path = std::string(ASSETS_DIRECTORY"/fake_whitted/fake_whitted.obj");
+    //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox-sphere.obj");
+    //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox.obj");
+    std::string path = std::string(ASSETS_DIRECTORY"/bear/bear_box-2.obj");
 
     // 1. tinyobj loading(upload the buffer to GPU when loading)
     tinyobj::attrib_t attrib;                       // vertex
@@ -1071,6 +1257,34 @@ void RTApp::init_scenes() {
 
     _rt_scene._meshes.resize(shapes.size());
     _rt_scene._materials.resize(materials.size());
+
+    // get aabb
+    const float inf = 1e5;
+    Interval3D aabb = { inf,-inf, inf,-inf, inf,-inf, };
+    for (size_t mesh_idx = 0; mesh_idx < shapes.size(); ++mesh_idx) {
+        size_t vertex_idx = 0;
+        RTMesh& mesh = _rt_scene._meshes[mesh_idx];
+        const tinyobj::shape_t& shape = shapes[mesh_idx];
+        const size_t num_faces = shape.mesh.num_face_vertices.size();
+        const size_t num_vertices = num_faces * 3;
+        for (size_t f = 0; f < num_faces; ++f) {
+            assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
+
+            for (size_t j = 0; j < 3; ++j, ++vertex_idx) {
+                const tinyobj::index_t& i = shape.mesh.indices[vertex_idx];
+                vec3 pos;
+                pos.x = attrib.vertices[3 * i.vertex_index + 0];
+                pos.y = attrib.vertices[3 * i.vertex_index + 1];
+                pos.z = attrib.vertices[3 * i.vertex_index + 2];
+                aabb.v[0][0] = std::min(pos.x, aabb.v[0][0]);
+                aabb.v[0][1] = std::max(pos.x, aabb.v[0][1]);
+                aabb.v[1][0] = std::min(pos.y, aabb.v[1][0]);
+                aabb.v[1][1] = std::max(pos.y, aabb.v[1][1]);
+                aabb.v[2][0] = std::min(pos.z, aabb.v[2][0]);
+                aabb.v[2][1] = std::max(pos.z, aabb.v[2][1]);
+            }
+        }
+    }
 
     // upload
     for (size_t mesh_idx = 0; mesh_idx < shapes.size(); ++mesh_idx) {
@@ -1109,7 +1323,53 @@ void RTApp::init_scenes() {
         VertexAttribute* data_attribs = reinterpret_cast<VertexAttribute*>(datas[3]);
         uint32_t* data_mat_IDs = reinterpret_cast<uint32_t*>(datas[4]);
 
+        // calculate the vertex nomal
+        std::vector < std::vector<vec3> > vertex_normals;
+        uint32_t vertex_normals_size = attrib.vertices.size() / 3 + 1;
+        vertex_normals.resize(vertex_normals_size);
+        for (uint32_t vn_idx = 0; vn_idx < vertex_normals_size; ++vn_idx) {
+            vertex_normals[vn_idx].clear();
+        }
+
         size_t vertex_idx = 0;
+        for (size_t f = 0; f < num_faces; ++f) {
+            assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
+            vec3 pos_for_normal[3];
+            uint32_t idx_for_vertex[3];
+            for (size_t j = 0; j < 3; ++j, ++vertex_idx) {
+                const tinyobj::index_t& i = shape.mesh.indices[vertex_idx];
+                idx_for_vertex[j] = i.vertex_index;
+                vec3& pos = pos_for_normal[j];
+                pos.x = attrib.vertices[3 * i.vertex_index + 0];
+                pos.y = attrib.vertices[3 * i.vertex_index + 1];
+                pos.z = attrib.vertices[3 * i.vertex_index + 2];
+                pos.x = (pos.x - aabb.v[0][0]) / (aabb.v[0][1] - aabb.v[0][0]);
+                pos.y = (pos.y - aabb.v[1][0]) / (aabb.v[1][1] - aabb.v[1][0]);
+                pos.z = (pos.z - aabb.v[2][0]) / (aabb.v[2][1] - aabb.v[2][0]);
+            }
+            // calc normal
+            vec3 a = pos_for_normal[1] - pos_for_normal[0];
+            vec3 b = pos_for_normal[2] - pos_for_normal[0];
+            vec3 ab_normal = glm::normalize(glm::cross(a, b));
+            for (size_t j = 0; j < 3; ++j) {
+                vertex_normals[idx_for_vertex[j]].push_back(ab_normal);
+            }
+        }
+
+        for (uint32_t vn_idx = 0; vn_idx < vertex_normals_size; ++vn_idx) {
+            auto& normals = vertex_normals[vn_idx];
+            // won't be used
+            if (normals.size() == 0) { continue; }
+            vec3 normal_sum = vec3(0.0f);
+            for (vec3& nor : normals) {
+                normal_sum += nor;
+            }
+            normal_sum /= normals.size();
+            normals.clear();
+            normals.push_back(normal_sum);
+        }
+
+        vertex_idx = 0;
         for (size_t f = 0; f < num_faces; ++f) {
             assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
 
@@ -1123,11 +1383,24 @@ void RTApp::init_scenes() {
                 pos.x = attrib.vertices[3 * i.vertex_index + 0];
                 pos.y = attrib.vertices[3 * i.vertex_index + 1];
                 pos.z = attrib.vertices[3 * i.vertex_index + 2];
-                normal.x = attrib.normals[3 * i.normal_index + 0];
-                normal.y = attrib.normals[3 * i.normal_index + 1];
-                normal.z = attrib.normals[3 * i.normal_index + 2];
-                uv.x = attrib.texcoords[2 * i.texcoord_index + 0];
-                uv.y = attrib.texcoords[2 * i.texcoord_index + 1];
+                pos.x = (pos.x - aabb.v[0][0]) / (aabb.v[0][1] - aabb.v[0][0]);
+                pos.y = (pos.y - aabb.v[1][0]) / (aabb.v[1][1] - aabb.v[1][0]);
+                pos.z = (pos.z - aabb.v[2][0]) / (aabb.v[2][1] - aabb.v[2][0]);
+
+                // normal.x = attrib.normals[3 * i.normal_index + 0];
+                // normal.y = attrib.normals[3 * i.normal_index + 1];
+                // normal.z = attrib.normals[3 * i.normal_index + 2];
+                auto tmp_normal = vertex_normals[i.vertex_index][0];
+                normal.x = tmp_normal.x;
+                normal.y = tmp_normal.y;
+                normal.z = tmp_normal.z;
+                if (i.texcoord_index == -1) {
+                    uv.x = 0.0f;
+                    uv.y = 0.0f;
+                } else {
+                    uv.x = attrib.texcoords[2 * i.texcoord_index + 0];
+                    uv.y = attrib.texcoords[2 * i.texcoord_index + 1];
+                }
             }
 
             const uint32_t a = static_cast<uint32_t>(3 * f + 0);
@@ -1302,7 +1575,7 @@ void RTApp::init_scenes() {
             vmaDestroyBuffer(_allocator, staging_buffer._buffer, staging_buffer._allocation);
         }
         for (int i = 0; i < erase_materials.size(); ++i) {
-            _rt_scene._materials.erase(_rt_scene._materials.begin() + erase_materials[i] + i);
+            _rt_scene._materials.erase(_rt_scene._materials.begin() + erase_materials[i] - i);
         }
     }
 
@@ -1454,10 +1727,6 @@ void RTApp::init_scenes() {
     _env_map_info.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
-void RTApp::render() {
-    std::cout << "render(): TODO" << std::endl;
-}
-
 void RTApp::init_descriptors() {
     const uint32_t num_meshes = static_cast<uint32_t>(_rt_scene._meshes.size());
     const uint32_t num_materials = static_cast<uint32_t>(_rt_scene._materials.size());
@@ -1472,13 +1741,20 @@ void RTApp::init_descriptors() {
     //  binding 1  ->  Camera data
     //  binding 2  ->  output image
     //  binding 3  ->  accumulated image
-    VkDescriptorType types0[] = {
+    //  binding 4  ->  radiance cache
+    std::vector<VkDescriptorType> types0 = {
         VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
         VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+        VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
     };
     VkShaderStageFlags stages0[] = {
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
         VK_SHADER_STAGE_RAYGEN_BIT_KHR,
@@ -1490,7 +1766,10 @@ void RTApp::init_descriptors() {
     // SWS_CAMDATA_BINDING      : 1
     // SWS_RESULT_IMAGE_BINDING : 2
     // SWS_ACCUMULATED_IMAGE_BINDING : 3
-    _rt_set_layout[SWS_SCENE_AS_SET] = _descriptors.create_set_layout(types0, stages0, 4);
+    // SWS_RADIANCE_CACHE_BINDING : 4
+    // SWS_STREE_BINDING : 5
+    // SWS_DTREE_BINDING : 6
+    _rt_set_layout[SWS_SCENE_AS_SET] = _descriptors.create_set_layout(types0.data(), stages0, types0.size());
 
     // Second set:
     //  binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
@@ -1522,7 +1801,6 @@ void RTApp::init_descriptors() {
     uint32_t descriptor_count5[] = { num_materials };
     _rt_set_layout[SWS_TEXTURES_SET] = _descriptors.create_set_layout(types5, stages5, 1, descriptor_count5);
 
-
     // Sixth set:
     //  binding 0 ->  env texture
     VkDescriptorType types6[] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
@@ -1551,6 +1829,8 @@ void RTApp::update_descriptors() {
     //  binding 1  ->  Camera data
     //  binding 2  ->  output image
     //  binding 3  ->  accumulated image
+    //  binding 4  ->  radiance cache
+    //  binding 5/6  ->  sample tree
     VkWriteDescriptorSetAccelerationStructureKHR descriptor_as_info = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR, nullptr };
     descriptor_as_info.accelerationStructureCount = 1;
     descriptor_as_info.pAccelerationStructures = &_rt_scene._tlas._acceleration_structure;
@@ -1595,8 +1875,60 @@ void RTApp::update_descriptors() {
     write_sets.push_back(ws);
     // binding 3 end
 
+    {
+        // radiance cache buffer
+        _radiance_cache_buffer_size = sizeof(RecordPerPixel) * _window_extent.width * _window_extent.height;
+        _radiance_cache_gpu = rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+        _radiance_cache_cpu = rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+        VkDescriptorBufferInfo rc_info = {};
+        rc_info.buffer = _radiance_cache_gpu._buffer;
+        rc_info.offset = 0;
+        rc_info.range = _radiance_cache_buffer_size;
+        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_RADIANCE_CACHE_SET], &rc_info, SWS_RADIANCE_CACHE_BINDING);
+        write_sets.push_back(ws);
+    }
+
+    {
+        _stree = std::vector<STree>(STree::MAX_NODE);
+        _dtree = std::vector<DTree>(DTree::MAX_NODE * STree::MAX_NODE);
+        STree::__root = _dtree.data();
+        DTree::__root = _dtree.data();
+
+        STree* s_root = _stree.data();
+        DTree* d_root = _dtree.data();
+
+        s_root->initial_split(0, 2);
+        for (int i = 0; i <= STree::__node_index; ++i) {
+            int root_index = DTree::get_root_index_by_STree_index(i);
+            (d_root + root_index)->initial_split(root_index, 2);
+        }
+
+        _stree_buffer_size = _stree.size() * sizeof(STree);
+        _stree_gpu = rt_utils::create_buffer(_allocator, _stree_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+        _stree_cpu = rt_utils::create_buffer(_allocator, _stree_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+        VkDescriptorBufferInfo stree_info = {};
+        stree_info.buffer = _stree_gpu._buffer;
+        stree_info.offset = 0;
+        stree_info.range = _stree_buffer_size;
+        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_STREE_SET], &stree_info, SWS_STREE_BINDING);
+        write_sets.push_back(ws);
+
+        _dtree_buffer_size = _dtree.size() * sizeof(DTree);
+        _dtree_gpu = rt_utils::create_buffer(_allocator, _dtree_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+        _dtree_cpu = rt_utils::create_buffer(_allocator, _dtree_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+
+        VkDescriptorBufferInfo dtree_info = {};
+        dtree_info.buffer = _dtree_gpu._buffer;
+        dtree_info.offset = 0;
+        dtree_info.range = _dtree_buffer_size;
+        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_DTREE_SET], &dtree_info, SWS_DTREE_BINDING);
+        write_sets.push_back(ws);
+    }
+
     // Second set:
-    //  binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
+    // binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
     ws = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
     ws.dstSet = _rt_set[SWS_MATIDS_SET];
     ws.dstBinding = 0;
@@ -1644,6 +1976,12 @@ void RTApp::update_descriptors() {
     _main_deletion_queue.push_function(
         [&]() {
             vmaDestroyBuffer(_allocator, _uniform_data_buffer._buffer, _uniform_data_buffer._allocation);
+            vmaDestroyBuffer(_allocator, _radiance_cache_cpu._buffer, _radiance_cache_cpu._allocation);
+            vmaDestroyBuffer(_allocator, _radiance_cache_gpu._buffer, _radiance_cache_gpu._allocation);
+            vmaDestroyBuffer(_allocator, _stree_cpu._buffer, _stree_cpu._allocation);
+            vmaDestroyBuffer(_allocator, _stree_gpu._buffer, _stree_gpu._allocation);
+            vmaDestroyBuffer(_allocator, _dtree_cpu._buffer, _dtree_cpu._allocation);
+            vmaDestroyBuffer(_allocator, _dtree_gpu._buffer, _dtree_gpu._allocation);
         }
     );
 }

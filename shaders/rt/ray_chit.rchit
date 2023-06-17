@@ -35,9 +35,10 @@ void main() {
 
     // interpolate our vertex attribs
     const vec3 normal = normalize(BaryLerp(v0.normal.xyz, v1.normal.xyz, v2.normal.xyz, barycentrics));
+    // const vec3 normal = normalize(cross(v0.normal.xyz - v1.normal.xyz, v0.normal.xyz - v2.normal.xyz)); // just face normal
     const vec2 uv = BaryLerp(v0.uv.xy, v1.uv.xy, v2.uv.xy, barycentrics);
 
-    const vec3 texel = (matID != OBJECT_ID_LIGHT) ? textureLod(TexturesArray[nonuniformEXT(matID)], uv, 0.0f).rgb : vec3(1.0f, 1.0f, 1.0f);
+    const vec3 texel = textureLod(TexturesArray[nonuniformEXT(matID)], uv, 0.0f).rgb;
 
     const float objId = float(matID);
 

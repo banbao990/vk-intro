@@ -19,9 +19,9 @@ vec2 DirToLatLong(vec3 dir) {
 }
 
 void main() {
-    vec2 uv = DirToLatLong(gl_WorldRayDirectionEXT);
-    vec3 envColor = textureLod(EnvTexture, uv, 0.0).rgb;
-    //vec3 envColor = vec3(0,0,0);
+    //vec2 uv = DirToLatLong(gl_WorldRayDirectionEXT);
+    //vec3 envColor = textureLod(EnvTexture, uv, 0.0).rgb;
+    vec3 envColor = vec3(0,0,0);
     PrimaryRay.colorAndDist = vec4(envColor, -1.0);
     PrimaryRay.normalAndObjId = vec4(0.0);
 }

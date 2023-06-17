@@ -3,13 +3,35 @@
 #extension GL_GOOGLE_include_directive : require
 
 #include "shared_with_shaders.h"
+#define DTREE_MAX_NODE_BIT 9
 
+struct STree {
+    ivec4 _child_index; // padding 2
+};
+
+struct DTree {
+    ivec4 _child_index;
+    vec4 _flux; // padding 3
+};
 
 layout(set = SWS_ENVS_SET, binding = 0) uniform sampler2D EnvTexture;
 
 layout(set = SWS_SCENE_AS_SET,          binding = SWS_SCENE_AS_BINDING)                 uniform accelerationStructureEXT Scene;
 layout(set = SWS_RESULT_IMAGE_SET,      binding = SWS_RESULT_IMAGE_BINDING, rgba8)      uniform image2D ResultImage;
 layout(set = SWS_ACCUMULATED_IMAGE_SET, binding = SWS_ACCUMULATED_IMAGE_BINDING, rgba8) uniform image2D AccumulatedImage;
+
+// storage buffer
+layout(std140, set = SWS_RADIANCE_CACHE_SET, binding = SWS_RADIANCE_CACHE_BINDING) buffer RadianceCacheBuffer {
+    RecordPerPixel data[];
+} RCBuffer;
+
+layout(std140, set = SWS_STREE_SET, binding = SWS_STREE_BINDING) buffer STreeBuffer {
+    STree data[];
+} sample_stree;
+
+layout(std140, set = SWS_DTREE_SET, binding = SWS_DTREE_BINDING) buffer DTreeBuffer {
+    DTree data[];
+} sample_dtree;
 
 layout(set = SWS_CAMDATA_SET,      binding = SWS_CAMDATA_BINDING, std140)     uniform AppData {
     UniformParams Params;
@@ -69,9 +91,35 @@ float rand_whash(inout uint seed) {
     return seed * RAND_2_1;
 }
 
+uint InitRandomSeed(uint val0, uint val1) {
+	uint v0 = val0, v1 = val1, s0 = 0;
+
+	for (uint n = 0; n < 16; n++) {
+		s0 += 0x9e3779b9;
+		v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
+		v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
+	}
+	return v0;
+}
+
+uint RandomInt(inout uint seed) {
+	// LCG values from Numerical Recipes
+    return (seed = 1664525 * seed + 1013904223);
+}
+
+float RandomFloat(inout uint seed) {
+	//// Float version using bitmask from Numerical Recipes
+	//const uint one = 0x3f800000;
+	//const uint msk = 0x007fffff;
+	//return uintBitsToFloat(one | (msk & (RandomInt(seed) >> 9))) - 1;
+
+	// Faster version from NVIDIA examples; quality good enough for our use case.
+	return (float(RandomInt(seed) & 0x00FFFFFF) / float(0x01000000));
+}
+
 vec3 random_cosine_direction(inout uint wseed) {
-    float r1 = rand_whash(wseed);
-    float r2 = rand_whash(wseed);
+    float r1 = RandomFloat(wseed);
+    float r2 = RandomFloat(wseed);
     float z = sqrt(1 - r2);
 
     float phi = MY_PI * 2 * r1;
@@ -83,6 +131,81 @@ vec3 random_cosine_direction(inout uint wseed) {
 // random sampler end
 
 
+int get_dtree_index(in vec3 position) {
+    int index = 0;
+    int depth = 0;
+    STree now = sample_stree.data[index];
+    // have child, recursive
+    while(now._child_index[0] != -1) {
+        int sub_time = (depth / 3);
+        int p_index = depth % 3;
+        int c_idx_idx = 1;
+        if (position[p_index] < 1.0f / (2 << sub_time)) {
+            c_idx_idx = 0;
+        }
+        index = now._child_index[c_idx_idx];
+        now = sample_stree.data[index];
+        ++depth;
+    }
+    return index;
+}
+
+float sample_direction(inout vec3 direction, inout uint wseed, int index) {
+    index = (index << DTREE_MAX_NODE_BIT);
+
+    DTree now = sample_dtree.data[index];
+    float pdf = 1.0f;
+    vec4 interval = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    int depth = 0;
+
+    while (now._child_index[0] != -1) {
+        float prob = RandomFloat(wseed) * now._flux[0];
+        int idx = 0;
+        for(idx = 0;idx < 3; ++idx) {
+            prob -= sample_dtree.data[now._child_index[idx]]._flux[0];
+            if(prob < 0) {
+                break;
+            }
+        }
+
+        float t1 = interval[0];
+        float t2 = interval[1];
+        float p1 = interval[2];
+        float p2 = interval[3];
+        float tm = (t1 + t2) / 2;
+        float pm = (p1 + p2) / 2;
+        interval[0] = ((idx&1) == 0)  ? t1 : tm;
+        interval[1] = ((idx&1) == 0)  ? tm : t2;
+        interval[2] = ((idx>>1) == 0) ? p1 : pm;
+        interval[3] = ((idx>>1) == 0) ? pm : p2;
+
+        ++depth;
+        index = now._child_index[idx];
+        pdf *= sample_dtree.data[index]._flux[0] / now._flux[0];
+        now = sample_dtree.data[index];
+    }
+
+    pdf *= pow(4, depth);
+    vec2 dir;
+    dir[0] = (RandomFloat(wseed) *(interval[1] - interval[0]) + interval[0]) * BB_PI - BB_PI_DIV_2;
+    dir[1] = (RandomFloat(wseed) *(interval[3] - interval[2]) + interval[2]) * BB_PI2 - BB_PI;
+    float sin_theta = sin(dir[0]);
+    float cos_theta = cos(dir[0]);
+    float sin_phi   = sin(dir[1]);
+    float cos_phi   = cos(dir[1]);
+    direction = vec3(sin_theta*cos_phi, cos_theta, sin_theta*sin_phi);
+    return pdf;
+}
+
+vec2 xyz2thetaphi(vec3 xyz_nomalized) {
+    float x = xyz_nomalized.x;
+    float y = xyz_nomalized.y;
+    float z = xyz_nomalized.z;
+    float theta = atan(sqrt(x*x+z*z)/y); // -pi/2 -> pi/2
+    float phi   = atan(z, x);            // -p    -> pi
+    return vec2(theta, phi);
+}
+
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
     const vec2 bottomRight = vec2(gl_LaunchSizeEXT.xy - 1);
@@ -90,9 +213,6 @@ void main() {
     const vec2 uv = (curPixel / bottomRight) * 2.0f - 1.0f;
 
     const float aspect = float(gl_LaunchSizeEXT.x) / float(gl_LaunchSizeEXT.y);
-
-    vec3 origin = Params.camPos.xyz;
-    vec3 direction = CalcRayDir(uv, aspect);
 
     const uint rayFlags = gl_RayFlagsOpaqueEXT;
     const uint shadowRayFlags = gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT;
@@ -102,13 +222,27 @@ void main() {
     const float tmin = 0.0f;
     const float tmax = Params.camNearFarFov.y;
 
-    vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
-    float throughout_pdf = 1.0f;
     vec3 finalColor = vec3(0.0f, 0.0f, 0.0f);
 
-    uint wseed = gl_LaunchIDEXT.x * gl_LaunchSizeEXT.x + gl_LaunchIDEXT.y + Params.random_seed;
+    uint wseed  = InitRandomSeed(InitRandomSeed(gl_LaunchIDEXT.x, gl_LaunchIDEXT.y), Params.accumulate_spp);
+
+    uint rc_index = gl_LaunchIDEXT.x * gl_LaunchSizeEXT.y + gl_LaunchIDEXT.y;
+
+//for(uint spp_index = 0; spp_index < RECORD_NUM; ++spp_index) {
+    vec3 origin = Params.camPos.xyz;
+    vec3 direction = CalcRayDir(uv, aspect);
+    vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
+    float throughout_pdf = 1.0f;
+
+    vec3 throughput_iter[SWS_MAX_RECURSION];
+    float throughout_pdf_iter[SWS_MAX_RECURSION];
+    vec3 position_iter[SWS_MAX_RECURSION];
+    vec2 direction_iter[SWS_MAX_RECURSION];
 
     for (int i = 0; i < SWS_MAX_RECURSION; ++i) {
+        throughput_iter[i] = vec3(1.0f, 1.0f, 1.0f);
+        throughout_pdf_iter[i] = 1.0f;
+
         traceRayEXT(Scene,
                     rayFlags,
                     cullMask,
@@ -134,65 +268,163 @@ void main() {
 
             const vec3 hitPos = origin + direction * hitDistance;
 
-            if (objectId == OBJECT_ID_TEAPOT) {
+            if (objectId == Params.mirror_id) {
                 // our teapot is mirror, so reflect and continue
-
+         
                 origin = hitPos + hitNormal * 0.001f;
                 direction = reflect(direction, hitNormal);
-            } else if (objectId == OBJECT_ID_BUNNY) {
-                // our bunny is made of ice, so refract and continue
+             } else if (objectId == Params.glass_id) {
+              // our bunny is made of ice, so refract and continue
+       
+              const float NdotD = dot(hitNormal, direction);
+       
+              vec3 refrNormal = hitNormal;
+              float refrEta;
+       
+              if(NdotD > 0.0f) {
+                  refrNormal = -hitNormal;
+                  refrEta = 1.0f / kBunnyRefractionIndex;
+              } else {
+                  refrNormal = hitNormal;
+                  refrEta = kBunnyRefractionIndex;
+              }
+       
+              origin = hitPos + direction * 0.001f;
+              direction = refract(direction, refrNormal, refrEta);
+             // full reflection
+             // if(dot(direction,direction)==0){break;}
+       //   } else if (objectId == OBJECT_ID_LIGHT) {
+             } else if (objectId == Params.light_id) {
+              // hit light
+                    vec3 fixed_light_color = vec3(30.0f);
+                    //finalColor += clamp(fixed_light_color * throughput / throughout_pdf, 0.0f, 1000.0f);
+                    //finalColor += fixed_light_color * throughput_iter[0] / throughout_pdf_iter[0];
+                    finalColor += fixed_light_color * throughput / throughout_pdf;
+                    //finalColor += hitColor * throughput / throughout_pdf;
 
-                const float NdotD = dot(hitNormal, direction);
-
-                vec3 refrNormal = hitNormal;
-                float refrEta;
-
-                if(NdotD > 0.0f) {
-                    refrNormal = -hitNormal;
-                    refrEta = 1.0f / kBunnyRefractionIndex;
-                } else {
-                    refrNormal = hitNormal;
-                    refrEta = kBunnyRefractionIndex;
-                }
-
-                origin = hitPos + direction * 0.001f;
-                direction = refract(direction, refrNormal, refrEta);
-            } else if (objectId == OBJECT_ID_LIGHT) {
-                // hit light
-                finalColor += hitColor * throughput / throughout_pdf;
-            } else {
+                    if(Params.ppg_train_on == 1) {
+                        RCBuffer.data[rc_index].num = min(i, RECORD_NUM);
+                        for(int j = 0; j < i && j < RECORD_NUM; ++j){
+                            vec3 li = (fixed_light_color * throughput_iter[j] / throughout_pdf_iter[j]);
+                            RCBuffer.data[rc_index].record[j].p = vec4(position_iter[j], li);
+                            RCBuffer.data[rc_index].record[j].d = vec4(direction_iter[j], 0.0f ,0.0f);
+                        }
+                    }
+                    break;
+             } else {
                 
                 // we hit diffuse primitive - simple lambertian
                 const vec3 toLight = normalize(Params.sunPosAndAmbient.xyz);
                 const vec3 shadowRayOrigin = hitPos + hitNormal * 0.001f;
+                if(Params.ppg_test_on == 1) {
+                    int dindex = get_dtree_index(hitPos);
+                    if(sample_dtree.data[dindex]._flux[0] <= 1e-4) {
+                        // only brdf
+                        const vec3 localDirection = random_cosine_direction(wseed);
+                        const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
 
-                const vec3 localDirection = random_cosine_direction(wseed);
-                const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
+                        // dirty implement
+                        mat3 local2world;
+                        const vec3 normal01 = normalize(hitNormal);
+                        const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+                        local2world[2] = normal01;
+                        local2world[1] = normalize(cross(normal01, a));
+                        local2world[0] = cross(normal01, local2world[1]); // left hand
+                        // dirty implment
 
-                // dirty implement
-                mat3 local2world;
-                const vec3 normal01 = normalize(hitNormal);
-                const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
-                local2world[2] = normal01;
-                local2world[1] = normalize(cross(normal01, a));
-                local2world[0] = cross(normal01, local2world[1]);
-                // dirty implment
+                        origin = hitPos + hitNormal * 0.001f;
+                        direction = local2world * localDirection;
+                        throughput *= pdf * hitColor;
+                        throughout_pdf *= pdf;
+                    } else {
+                        if(RandomFloat(wseed) < 0.5f) {
+                            float pdf = sample_direction(direction, wseed, dindex);
+                            if(dot(hitNormal, direction) > 0.0) {
+                                origin = hitPos + hitNormal * 0.001f;
+                                throughput *= pdf * hitColor;
+                                throughout_pdf *= pdf;
+                            } else {
+                                // only brdf
+                                const vec3 localDirection = random_cosine_direction(wseed);
+                                const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
 
-                origin = hitPos + hitNormal * 0.001f;
-                direction = local2world * localDirection;
-                throughput *= pdf * hitColor;
-                throughout_pdf *= pdf;
+                                // dirty implement
+                                mat3 local2world;
+                                const vec3 normal01 = normalize(hitNormal);
+                                const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+                                local2world[2] = normal01;
+                                local2world[1] = normalize(cross(normal01, a));
+                                local2world[0] = cross(normal01, local2world[1]); // left hand
+                                // dirty implment
+
+                                origin = hitPos + hitNormal * 0.001f;
+                                direction = local2world * localDirection;
+                                throughput *= pdf * hitColor;
+                                throughout_pdf *= pdf;
+                            }
+                        } else {
+                            // only brdf
+                            const vec3 localDirection = random_cosine_direction(wseed);
+                            const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
+
+                            // dirty implement
+                            mat3 local2world;
+                            const vec3 normal01 = normalize(hitNormal);
+                            const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+                            local2world[2] = normal01;
+                            local2world[1] = normalize(cross(normal01, a));
+                            local2world[0] = cross(normal01, local2world[1]); // left hand
+                            // dirty implment
+
+                            origin = hitPos + hitNormal * 0.001f;
+                            direction = local2world * localDirection;
+                            throughput *= pdf * hitColor;
+                            throughout_pdf *= pdf;
+                        }
+                    }
+                } else {
+                    const vec3 localDirection = random_cosine_direction(wseed);
+                    const float pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
+
+                    // dirty implement
+                    mat3 local2world;
+                    const vec3 normal01 = normalize(hitNormal);
+                    const vec3 a = (abs(normal01[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
+                    local2world[2] = normal01;
+                    local2world[1] = normalize(cross(normal01, a));
+                    local2world[0] = cross(normal01, local2world[1]); // left hand
+                    // dirty implment
+
+                    origin = hitPos + hitNormal * 0.001f;
+                    direction = local2world * localDirection;
+                    throughput *= pdf * hitColor;
+                    throughout_pdf *= pdf;
+                    if(Params.ppg_train_on == 1) {
+                        position_iter[i] = hitPos;
+                        direction_iter[i] = xyz2thetaphi(direction);
+                        for(int j = 0; j <= i; ++j){
+                            throughput_iter[j] *= pdf * hitColor;
+                            throughout_pdf_iter[j] *= pdf;
+                        }
+                    }
+                }
             }
         }
     }
+//}
+  // float c = 0.0f;
+  // for(int i= 0;i <64;++i) {
+  //     c= rand_whash(wseed);
+  // }
+  // finalColor = vec3(c);
 
     // finalColor = textureLod(EnvTexture, DirToLatLong(direction), 0).rgb;
     uint spp = Params.accumulate_spp;
     if(spp != 1) {
         finalColor = (finalColor + (spp-1) * imageLoad(AccumulatedImage, ivec2(gl_LaunchIDEXT.xy)).rgb) / spp;
     }
-    
+
     imageStore(AccumulatedImage, ivec2(gl_LaunchIDEXT.xy), vec4(finalColor, 1.0f));
-    finalColor = LinearToSrgb(finalColor);
-    imageStore(ResultImage, ivec2(gl_LaunchIDEXT.xy), vec4(finalColor, 1.0f));
+    finalColor = LinearToSrgb(finalColor);///RECORD_NUM);
+    imageStore(ResultImage, ivec2(gl_LaunchIDEXT.xy), vec4(finalColor*Params.light_strength, 1.0f));
 }
