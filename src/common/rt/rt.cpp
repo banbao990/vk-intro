@@ -11,6 +11,8 @@
 #include "rtHelper.h"
 
 #include <algorithm>
+#include <random>
+#include <set>
 
 static const float sMoveSpeed = 2.0f;
 static const float sAccelMult = 5.0f;
@@ -135,6 +137,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
     }
     if (ImGui::CollapsingHeader("PPG")) {
         ImGui::Checkbox("PPG On", &__ppg_on);
+        //if (STree::__trained_spp > 4000) {
         if (STree::__node_index > 1000) {
             _ppg_train_on = false;
         }
@@ -213,10 +216,12 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     if (__ppg_on) {
         // update tree
         if (_ppg_train_on) {
+            ++STree:: __trained_spp;
             VkBufferCopy copy = {};
             copy.srcOffset = 0;
             copy.dstOffset = 0;
             copy.size = _radiance_cache_buffer_size;
+            std::vector<float> li_record;
             vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1, &copy);
             {
                 void* data;
@@ -228,16 +233,15 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                 for (uint32_t i = 0; i < windows_size; ++i) {
                     if (d->num != 0) {
                         for (int num_idx = 0; num_idx < d->num; ++num_idx) {
-                            auto& pos = d->record[i].p;
-                            auto& dir = d->record[i].d;
+                            auto& pos = d->record[num_idx].p;
+                            auto& dir = d->record[num_idx].d;
                             int index = s_root->find_index(0, 0, { pos[0],pos[1],pos[2] });
                             int dtree_index = DTree::get_root_index_by_STree_index(index);
-
-                            d_root[dtree_index].fill(dtree_index,
-                                (dir[0] + BB_PI_DIV_2) / BB_PI, (dir[1] + BB_PI) / BB_PI2,
-                                10.0f, { {0.0,1.0f},{0.0f,1.0f} });
+                            li_record.push_back(pos[3]);
+                            d_root[dtree_index].fill(dtree_index, dir[0], dir[1], pos[3], { {0.0,1.0f},{0.0f,1.0f} });
                         }
                     }
+                    ++d;
                 }
                 for (int i = 0; i <= STree::__node_index; ++i) {
                     int dtree_index = DTree::get_root_index_by_STree_index(i);
@@ -247,6 +251,12 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                 }
                 s_root->update(0, 0, 20000);
                 vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
+
+                if (li_record.begin() != li_record.end()) {
+                    sort(li_record.begin(), li_record.end());
+                    std::cout << *li_record.begin() << std::endl;
+                    std::cout << *li_record.rbegin() << std::endl;
+                }
             }
         }
         if (_ppg_test_on) {
@@ -440,6 +450,90 @@ RTApp::~RTApp() {
     basic_clean_up();
 }
 
+
+int get_dtree_index(vec3 position, STree *s_root) {
+    int index = 0;
+    int depth = 0;
+    STree* now = s_root + index;
+    // have child, recursive
+    while (now->_child_index[0] != -1) {
+        int sub_time = (depth / 3);
+        int p_index = depth % 3;
+        int c_idx_idx = 1;
+        if (position[p_index] < 1.0f / (2 << sub_time)) {
+            c_idx_idx = 0;
+        }
+        index = now->_child_index[c_idx_idx];
+        now = s_root + index;
+        ++depth;
+    }
+    return index;
+}
+
+
+vec2 xyz2thetaphi(vec3 xyz) {
+    xyz = normalize(xyz);
+    float cos_theta = std::min(std::max(xyz.z, -1.0f), 1.0f);
+    float phi = std::atan2(xyz.y, xyz.z);
+    if (phi < 0) { phi += BB_PI2; }
+    return vec2((cos_theta + 1.0f) / 2.0f, phi / BB_PI2);
+}
+
+vec3 thetaphi2xyz(vec2 tp) {
+    float cos_theta = 2.0f * tp.x - 1.0f;
+    float phi = tp.y * BB_PI2;
+    float sin_theta = sqrt(1 - cos_theta * cos_theta);
+
+    vec2 sc_phi = vec2(sin(phi), cos(phi));
+    return vec3(sin_theta * sc_phi.y, sin_theta * sc_phi.x, cos_theta);
+}
+
+float sample_direction(vec3 direction, int index, DTree * d_root) {
+    std::random_device seed;
+    std::ranlux48 engine(seed());
+    std::uniform_real_distribution<> distrib(0,1.0f);
+
+    index = (index << DTREE_MAX_NODE_BIT);
+    DTree* now = d_root+index;
+    float root_flux = now->_flux;
+    vec4 interval = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    int depth = 0;
+
+    while (now->_child_index[0] != -1) {
+        float prob = distrib(engine) * now->_flux;
+        int idx = 0;
+        for (idx = 0; idx < 3; ++idx) {
+            prob -= d_root[now->_child_index[idx]]._flux;
+            if (prob < 0) {
+                break;
+            }
+        }
+    
+        float t1 = interval[0];
+        float t2 = interval[1];
+        float p1 = interval[2];
+        float p2 = interval[3];
+        float tm = (t1 + t2) / 2;
+        float pm = (p1 + p2) / 2;
+        interval[0] = ((idx & 1) == 0) ? t1 : tm;
+        interval[1] = ((idx & 1) == 0) ? tm : t2;
+        interval[2] = ((idx >> 1) == 0) ? p1 : pm;
+        interval[3] = ((idx >> 1) == 0) ? pm : p2;
+    
+        ++depth;
+        index = now->_child_index[idx];
+        now = d_root + index;
+    }
+
+    float pdf = now->_flux / root_flux / (4*BB_PI);
+    //pdf *= pow(4, depth);
+    vec2 dir;
+    dir[0] = (distrib(engine) * (interval[1] - interval[0]) + interval[0]);
+    dir[1] = (distrib(engine) * (interval[3] - interval[2]) + interval[2]);
+    direction = thetaphi2xyz(dir);
+    return pdf;
+}
+
 void test_sdtree() {
     std::vector<STree> tmp_stree(STree::MAX_NODE);
     std::vector<DTree> tmp_dtree(DTree::MAX_NODE * STree::MAX_NODE); // TODO: node aligned, root_idx = 0 \to root_idx = MAX_NODE - 1
@@ -476,7 +570,18 @@ void test_sdtree() {
         }
         d_root[dtree_index].print(dtree_index, 0);
     }
+
+    const Position pos = { 0.1f,0.1f,0.1f };
+    const vec3 pos_v = { pos.v[0], pos.v[1], pos.v[2] };
+    int t_index = get_dtree_index(pos_v, s_root);
+    sample_direction(vec3(1.0f), t_index, d_root);
+
+    sample_direction(vec3(1.0f), 9, d_root);
+
+
+    // sample test
 }
+
 
 void RTApp::run() {
     init();
@@ -495,7 +600,7 @@ void RTApp::run() {
             << "sizeof(RadianceCache): " << sizeof(RadianceCache) << std::endl
             << "sizeof(RecordPerPixel): " << sizeof(RecordPerPixel) << std::endl;
 
-        //test_sdtree();
+        // test_sdtree();
 
     }
 

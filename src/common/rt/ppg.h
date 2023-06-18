@@ -5,6 +5,10 @@
 #define STREE_CHILD_NODE 2
 #define DTREE_CHILD_NODE 4
 
+#define DTREE_MAX_NODE_BIT 9
+#define GET_DTREE_INDEX(x) ((x)>>DTREE_MAX_NODE_BIT)
+#define GET_DTREE_ROOT_INDEX(x) static_cast<int>(((x)>>DTREE_MAX_NODE_BIT)<<DTREE_MAX_NODE_BIT)
+#define GET_DTREE_ROOT_INDEX_BY_STREE_INDEX(x) static_cast<int>((x)<<DTREE_MAX_NODE_BIT)
 
 class DTree;
 //// STree
@@ -28,6 +32,7 @@ public:
     static DTree* __root;
     static int __node_index;
     static std::vector<int> __flux;
+    static int __trained_spp;
 
     STree();
 

@@ -5,11 +5,7 @@
 
 const int STree::MAX_NODE = 10000;
 int STree::__node_index = 0;
-
-#define DTREE_MAX_NODE_BIT 9
-#define GET_DTREE_INDEX(x) ((x)>>DTREE_MAX_NODE_BIT)
-#define GET_DTREE_ROOT_INDEX(x) static_cast<int>(((x)>>DTREE_MAX_NODE_BIT)<<DTREE_MAX_NODE_BIT)
-#define GET_DTREE_ROOT_INDEX_BY_STREE_INDEX(x) static_cast<int>((x)<<DTREE_MAX_NODE_BIT)
+int STree::__trained_spp = 0;
 
 std::vector<int> STree::__flux(STree::MAX_NODE, 0);
 DTree* STree::__root = nullptr;
@@ -215,6 +211,7 @@ int DTree::get_index(int index) {
 
 
 void DTree::initial_split(int index, int depth) {
+    _flux = 1.0f*(1<<depth)*(1<<depth); // TODO: should set initial flux = 0
     if (depth == 0) { return; }
     int idx = get_index(index);
     // should have space left
@@ -232,11 +229,22 @@ void DTree::print(int index, int depth, DInterval degrees) {
         << ": flux = " << _flux
         << ", " << degrees
         << std::endl;
+
     if (_child_index[0] != -1) {
-        for (int i = 0; i < DTREE_CHILD_NODE; ++i) {
-            // TODO....................
+        float t1 = degrees._theta[0];
+        float t2 = degrees._theta[1];
+        float p1 = degrees._phi[0];
+        float p2 = degrees._phi[1];
+        float tm = (t1 + t2) / 2;
+        float pm = (p1 + p2) / 2;
+        for (int idx = 0; idx < DTREE_CHILD_NODE; ++idx) {
+            degrees._theta[0] = ((idx & 1) == 0) ? t1 : tm;
+            degrees._theta[1] = ((idx & 1) == 0) ? tm : t2;
+            degrees._phi[0] = ((idx >> 1) == 0) ? p1 : pm;
+            degrees._phi[1] = ((idx >> 1) == 0) ? pm : p2;
+
             //degrees ╥жая
-            (this + _child_index[i] - index)->print(_child_index[i], depth + 1);
+            (this + _child_index[idx] - index)->print(_child_index[idx], depth + 1, degrees);
         }
     }
 }
