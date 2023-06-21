@@ -12,7 +12,7 @@ DTree* STree::__root = nullptr;
 
 const int DTree::MAX_NODE = (1 << DTREE_MAX_NODE_BIT);
 const float DTree::__rho = 0.01f;
-std::vector<int> DTree::__node_idx(STree::MAX_NODE, 0);
+std::vector<int> DTree::__node_index(STree::MAX_NODE, 0);
 DTree* DTree::__root = nullptr;
 
 
@@ -43,11 +43,10 @@ STree::STree() {
 void STree::update(int depth, int index, int threshold) {
     // no child
     if (_child_index[0] == -1) {
-        int& flux = __flux[index];
-        if (flux < threshold) {
-            return;
-        }
-        // construct child node, abnd fall through(update child node)
+        int flux = __flux[index];
+        if (flux < threshold) { return; }
+
+        // construct child node, and fall through (update child node)
         int c_index = get_index();
         // no space left
         if (c_index == -1) {
@@ -140,7 +139,7 @@ DTree::DTree() {
     _flux = 0;
 }
 
-void DTree::fill(int index, float theta, float phi, float Li, DInterval angles) {
+void DTree::fill(const int index, const float theta, const float phi, const float Li, const DInterval angles) {
     _flux += Li;
     // no child
     if (_child_index[0] == -1) { return; }
@@ -164,7 +163,7 @@ void DTree::fill(int index, float theta, float phi, float Li, DInterval angles) 
     (this + (c_index - index))->fill(c_index, theta, phi, Li, cangles);
 }
 
-void DTree::update(int index, float flux) {
+void DTree::update(const int index, const float flux) {
     _flux += flux;
     DTree* root = this + GET_DTREE_ROOT_INDEX(index) - index;
 
@@ -178,7 +177,7 @@ void DTree::update(int index, float flux) {
 
         // no space left
         if (idx == -1) { return; }
-        float flux_to_add = _flux / DTREE_CHILD_NODE;
+        const float flux_to_add = flux / DTREE_CHILD_NODE;
         for (int i = 0; i < DTREE_CHILD_NODE; ++i) {
             _child_index[i] = idx;
             (this + (idx - index))->update(idx, flux_to_add);
@@ -200,7 +199,7 @@ int DTree::get_root_index(int index) {
 
 int DTree::get_index(int index) {
     int t_index = GET_DTREE_INDEX(index);
-    int& node_index = __node_idx[t_index];
+    int& node_index = __node_index[t_index];
     if (node_index + 4 >= MAX_NODE) {
         return -1;
     }
@@ -211,7 +210,7 @@ int DTree::get_index(int index) {
 
 
 void DTree::initial_split(int index, int depth) {
-    _flux = 1.0f*(1<<depth)*(1<<depth); // TODO: should set initial flux = 0
+    _flux = 1.0f * (1 << depth) * (1 << depth) / 64.0f; // TODO: should set initial flux = 0
     if (depth == 0) { return; }
     int idx = get_index(index);
     // should have space left
@@ -254,8 +253,8 @@ int DTree::get_root_index_by_STree_index(int index) {
 }
 
 void DTree::copy(int src_index, int dst_index) {
-    int node_num = __node_idx[src_index];
-    __node_idx[dst_index] = node_num;
+    int node_num = __node_index[src_index];
+    __node_index[dst_index] = node_num;
 
     assert(__root != nullptr);
     DTree* src_addr = __root + get_root_index_by_STree_index(src_index);

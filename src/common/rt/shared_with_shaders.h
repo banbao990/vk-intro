@@ -108,6 +108,7 @@ struct UniformParams {
     int mirror_id;
     int ppg_train_on;
     int ppg_test_on;
+    int debug_int;
 };
 
 

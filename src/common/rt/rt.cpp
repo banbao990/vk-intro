@@ -136,17 +136,29 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ImGui::PopID();
     }
     if (ImGui::CollapsingHeader("PPG")) {
-        ImGui::Checkbox("PPG On", &__ppg_on);
+        ImGui::Checkbox("PPG On", &_ppg_on);
         //if (STree::__trained_spp > 4000) {
         if (STree::__node_index > 1000) {
             _ppg_train_on = false;
         }
+        bool temp_train_on = _ppg_train_on;
         ImGui::Checkbox("PPG Training", &_ppg_train_on);
+        if (!temp_train_on && _ppg_train_on) {
+            STree::__trained_spp = 5;
+            _ppg_skip_first_data_obtain = true;
+        }
+
+        bool temp_test_on = _ppg_test_on;
         ImGui::Checkbox("PPG Testing", &_ppg_test_on);
-        ImGui::Text("STree nodes: %d", STree::__node_index);
+        if (!temp_test_on && _ppg_test_on) {
+            _ppg_update_gpu_sdtree = true;
+        }
+
+        ImGui::Text("STree nodes: %d", STree::__node_index + 1);
         if (_ppg_train_on) { _ppg_test_on = false; }
     }
     ImGui::Checkbox("Test", &___test);
+    ImGui::SliderInt("Debug Int", &_debug_int, 0, 6);
 
 
     // ui end
@@ -213,80 +225,84 @@ void RTApp::init_render_pass_for_imgui() {
 }
 
 void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
-    if (__ppg_on) {
+    if (_ppg_on) {
         // update tree
         if (_ppg_train_on) {
-            ++STree:: __trained_spp;
-            VkBufferCopy copy = {};
-            copy.srcOffset = 0;
-            copy.dstOffset = 0;
-            copy.size = _radiance_cache_buffer_size;
-            std::vector<float> li_record;
-            vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1, &copy);
-            {
-                void* data;
-                vmaMapMemory(_allocator, _radiance_cache_cpu._allocation, &data);
-                STree* s_root = _stree.data();
-                DTree* d_root = _dtree.data();
-                RecordPerPixel* d = static_cast<RecordPerPixel*>(data);
-                const uint32_t windows_size = _window_extent.width * _window_extent.height;
-                for (uint32_t i = 0; i < windows_size; ++i) {
-                    if (d->num != 0) {
-                        for (int num_idx = 0; num_idx < d->num; ++num_idx) {
-                            auto& pos = d->record[num_idx].p;
-                            auto& dir = d->record[num_idx].d;
-                            int index = s_root->find_index(0, 0, { pos[0],pos[1],pos[2] });
-                            int dtree_index = DTree::get_root_index_by_STree_index(index);
-                            li_record.push_back(pos[3]);
-                            d_root[dtree_index].fill(dtree_index, dir[0], dir[1], pos[3], { {0.0,1.0f},{0.0f,1.0f} });
+            if (_ppg_skip_first_data_obtain) {
+                _ppg_skip_first_data_obtain = false;
+            } else {
+                VkBufferCopy copy = {};
+                copy.srcOffset = 0;
+                copy.dstOffset = 0;
+                copy.size = _radiance_cache_buffer_size;
+                //std::vector<float> li_record;
+                vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1, &copy);
+                {
+                    void* data;
+                    vmaMapMemory(_allocator, _radiance_cache_cpu._allocation, &data);
+                    STree* s_root = _stree.data();
+                    DTree* d_root = _dtree.data();
+                    RecordPerPixel* d = static_cast<RecordPerPixel*>(data);
+                    const uint32_t windows_size = _window_extent.width * _window_extent.height;
+                    for (uint32_t i = 0; i < windows_size; ++i) {
+                        if (d->num != 0) {
+                            for (int num_idx = 0; num_idx < d->num; ++num_idx) {
+                                auto& pos = d->record[num_idx].p;
+                                auto& dir = d->record[num_idx].d;
+                                int index = s_root->find_index(0, 0, { pos[0],pos[1],pos[2] });
+                                int dtree_index = DTree::get_root_index_by_STree_index(index);
+                                //li_record.push_back(pos[3]);
+                                d_root[dtree_index].fill(dtree_index, dir[0], dir[1], 1.0f, { {0.0,1.0f},{0.0f,1.0f} });
+                            }
                         }
+                        ++d;
                     }
-                    ++d;
-                }
-                for (int i = 0; i <= STree::__node_index; ++i) {
-                    int dtree_index = DTree::get_root_index_by_STree_index(i);
-                    if (d_root[dtree_index]._flux) {
-                        d_root[dtree_index].update(dtree_index, 0);
-                    }
-                }
-                s_root->update(0, 0, 20000);
-                vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
+                    //for (int i = 0; i <= STree::__node_index; ++i) {
+                    //    int dtree_index = DTree::get_root_index_by_STree_index(i);
+                    //    if (d_root[dtree_index]._flux) {
+                    //        d_root[dtree_index].update(dtree_index, 0);
+                    //    }
+                    //}
+                    //s_root->update(0, 0, 20000);
+                    vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
 
-                if (li_record.begin() != li_record.end()) {
-                    sort(li_record.begin(), li_record.end());
-                    std::cout << *li_record.begin() << std::endl;
-                    std::cout << *li_record.rbegin() << std::endl;
+                    //if (li_record.begin() != li_record.end()) {
+                    //    sort(li_record.begin(), li_record.end());
+                    //    std::cout << *li_record.begin() << std::endl;
+                    //    std::cout << *li_record.rbegin() << std::endl;
+                    //}
+                }
+                if (--STree::__trained_spp <= 0) {
+                    _ppg_train_on = false;
                 }
             }
         }
-        if (_ppg_test_on) {
-            static bool first = true;
-            if (!first) {
-            } else {
-                {
-                    first = !first;
-                    void* data;
-                    vmaMapMemory(_allocator, _dtree_cpu._allocation, &data);
-                    memcpy(data, _dtree.data(), _dtree_buffer_size);
-                    vmaUnmapMemory(_allocator, _dtree_cpu._allocation);
+        if (_ppg_update_gpu_sdtree) {
+            _ppg_update_gpu_sdtree = false;
+            {
+                auto s_root = _stree.data();
+                auto d_root = _dtree.data();
+                void* data;
+                vmaMapMemory(_allocator, _dtree_cpu._allocation, &data);
+                memcpy(data, _dtree.data(), _dtree_buffer_size);
+                vmaUnmapMemory(_allocator, _dtree_cpu._allocation);
 
-                    VkBufferCopy copy = {};
-                    copy.srcOffset = 0;
-                    copy.dstOffset = 0;
-                    copy.size = _dtree_buffer_size;
-                    vkCmdCopyBuffer(cmd, _dtree_cpu._buffer, _dtree_gpu._buffer, 1, &copy);
-                }
-                {
-                    void* data;
-                    vmaMapMemory(_allocator, _stree_cpu._allocation, &data);
-                    memcpy(data, _stree.data(), _stree_buffer_size);
-                    vmaUnmapMemory(_allocator, _stree_cpu._allocation);
-                    VkBufferCopy copy = {};
-                    copy.srcOffset = 0;
-                    copy.dstOffset = 0;
-                    copy.size = _stree_buffer_size;
-                    vkCmdCopyBuffer(cmd, _stree_cpu._buffer, _stree_gpu._buffer, 1, &copy);
-                }
+                VkBufferCopy copy = {};
+                copy.srcOffset = 0;
+                copy.dstOffset = 0;
+                copy.size = _dtree_buffer_size;
+                vkCmdCopyBuffer(cmd, _dtree_cpu._buffer, _dtree_gpu._buffer, 1, &copy);
+            }
+            {
+                void* data;
+                vmaMapMemory(_allocator, _stree_cpu._allocation, &data);
+                memcpy(data, _stree.data(), _stree_buffer_size);
+                vmaUnmapMemory(_allocator, _stree_cpu._allocation);
+                VkBufferCopy copy = {};
+                copy.srcOffset = 0;
+                copy.dstOffset = 0;
+                copy.size = _stree_buffer_size;
+                vkCmdCopyBuffer(cmd, _stree_cpu._buffer, _stree_gpu._buffer, 1, &copy);
             }
         }
     }
@@ -330,8 +346,9 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.light_id = _light_id;
     uniform_data.glass_id = _glass_id;
     uniform_data.mirror_id = _mirror_id;
-    uniform_data.ppg_train_on = __ppg_on && _ppg_train_on;
-    uniform_data.ppg_test_on = __ppg_on && _ppg_test_on;
+    uniform_data.ppg_train_on = _ppg_on && _ppg_train_on;
+    uniform_data.ppg_test_on = _ppg_on && _ppg_test_on;
+    uniform_data.debug_int = _debug_int;
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -586,14 +603,14 @@ void test_sdtree() {
 void RTApp::run() {
     init();
 
-    if (__ppg_on) {
+    if (_ppg_on) {
         std::cout << "PPG On" << std::endl;
         std::cout << "DTree Size: " << sizeof(DTree) << ", STree Size: " << sizeof(STree) << std::endl;
 
         std::cout << "DTree Info:\n"
-            << DTree::__node_idx.size() << std::endl
-            << DTree::__node_idx.front() << std::endl
-            << DTree::__node_idx.back() << std::endl
+            << DTree::__node_index.size() << std::endl
+            << DTree::__node_index.front() << std::endl
+            << DTree::__node_index.back() << std::endl
             << DTree::__rho << std::endl;
 
         std::cout
@@ -1322,10 +1339,16 @@ void RTApp::create_SBT() {
 }
 
 void RTApp::init_scenes() {
+    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
+    // mCamera.SetViewPlanes(0.1f, 100.0f);
+    // mCamera.SetFovY(45.0f);
+    // mCamera.LookAt(vec3(0.577f,0.791f,0.744f), vec3(0.081f,1.257f,0.011f));
+
     mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
     mCamera.SetViewPlanes(0.1f, 100.0f);
     mCamera.SetFovY(45.0f);
-    mCamera.LookAt(vec3(0.577f,0.791f,0.744f), vec3(0.081f,1.257f,0.011f));
+    mCamera.LookAt(vec3(0.546f, 0.662f, 2.262f), vec3(0.499f, 0.596f, 1.265f));
+
     _light_id = 7;
     _glass_id = 10;
     _mirror_id = 13;

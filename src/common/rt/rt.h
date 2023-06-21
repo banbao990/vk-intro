@@ -34,7 +34,7 @@
 
 class RTApp {
 public:
-    bool __ppg_on{false};
+    bool _ppg_on{ false };
 
     RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer);
     virtual ~RTApp();
@@ -179,8 +179,11 @@ protected:
 
 
     // ppg
+    int _debug_int{ 0 };
     bool _ppg_train_on{ false };
+    bool _ppg_skip_first_data_obtain{ false };
     bool _ppg_test_on{ false };
+    bool _ppg_update_gpu_sdtree{ false };
     std::vector<STree> _stree{};
     std::vector<DTree> _dtree{};
     uint32_t _stree_buffer_size{};

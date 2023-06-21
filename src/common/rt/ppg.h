@@ -68,7 +68,7 @@ class DTree {
 public:
     const static int MAX_NODE;
     const static float __rho;
-    static std::vector<int> __node_idx;
+    static std::vector<int> __node_index;
     static DTree* __root;
     static int DTree::get_root_index_by_STree_index(int index);
 
@@ -85,8 +85,8 @@ public:
     /// <summary>
     /// flux: should be added by this node
     /// </summary>
-    void update(int index, float flux);
-    void fill(int index, float theta, float phi, float Li, DInterval angles);
+    void update(const int index, const float flux);
+    void fill(const int index, const float theta, const float phi, const float Li, const DInterval angles);
     void initial_split(int index, int depth);
 
     void copy(int src_index, int dst_index);
@@ -98,7 +98,7 @@ public:
     //  0: (t1, p1)
     //  1: (t1, p2)
     //  2: (t2, p1)
-    //  3: (t2, p1)
+    //  3: (t2, p2)
     int _child_index[DTREE_CHILD_NODE];
     float _flux;
     float ___padding[3];
