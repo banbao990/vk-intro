@@ -5,7 +5,7 @@ cmake_minimum_required (VERSION 3.20)
 project ("vulkan_guide")
 
 # configration
-set(USE_THIRD_PARTY_SDL OFF)
+set(USE_THIRD_PARTY_SDL ON)
 
 set(CMAKE_CXX_STANDARD 17)
 
