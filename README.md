@@ -10,6 +10,10 @@
     + windows
         + visual studio 2022
         + vscode + 课程给出的 mingw
++ 如果本地没有 SDL 库，需要将 CMakeLists.txt 中的第 8 行修改如下
+```txt
+set(USE_THIRD_PARTY_SDL ON)
+```
 
 + 更多问题请查看课程给出的[腾讯文档](https://docs.qq.com/doc/DUlloeFpHeVhaUm1J)
 
