@@ -113,7 +113,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ImGui::PushID(id);
         ImGui::Checkbox("Enable Camera", &mCameraEnable);
         ImGui::Text("position: %.3f, %.3f, %.3f", mCamera.GetPosition()[0], mCamera.GetPosition()[1], mCamera.GetPosition()[2]);
-        ImGui::Text("target: %.3f, %.3f, %.3f", mCamera.GetDirection()[0]+ mCamera.GetPosition()[0], mCamera.GetDirection()[1]+ mCamera.GetPosition()[1], mCamera.GetDirection()[2]+ mCamera.GetPosition()[2]);
+        ImGui::Text("target: %.3f, %.3f, %.3f", mCamera.GetDirection()[0] + mCamera.GetPosition()[0], mCamera.GetDirection()[1] + mCamera.GetPosition()[1], mCamera.GetDirection()[2] + mCamera.GetPosition()[2]);
         ImGui::Text("direction: %.3f, %.3f, %.3f", mCamera.GetDirection()[0], mCamera.GetDirection()[1], mCamera.GetDirection()[2]);
         ImGui::Text("side: %.3f, %.3f, %.3f", mCamera.GetSide()[0], mCamera.GetSide()[1], mCamera.GetSide()[2]);
         ImGui::PopID();
@@ -131,21 +131,21 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         if (temp != _glass_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
         temp = _mirror_id;
         ImGui::SliderInt("Mirror ID", &_mirror_id, 0, 20);
-        
+
         if (temp != _mirror_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
         ImGui::PopID();
     }
     if (ImGui::CollapsingHeader("PPG")) {
         ImGui::Checkbox("PPG On", &_ppg_on);
-        //if (STree::__trained_spp > 4000) {
-        if (STree::__node_index > 1000) {
-            _ppg_train_on = false;
-        }
+        //if (STree::__trained_spp > 200) {
+        // if (STree::__node_index > 2000) {
+            //_ppg_train_on = false;
+        //}
         bool temp_train_on = _ppg_train_on;
         ImGui::Checkbox("PPG Training", &_ppg_train_on);
         if (!temp_train_on && _ppg_train_on) {
-            STree::__trained_spp = 5;
-            _ppg_skip_first_data_obtain = true;
+            STree::__trained_spp = 200;
+            _ppg_skip_first_data_obtain = 1;
         }
 
         bool temp_test_on = _ppg_test_on;
@@ -157,10 +157,25 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ImGui::Text("STree nodes: %d", STree::__node_index + 1);
         if (_ppg_train_on) { _ppg_test_on = false; }
     }
-    ImGui::Checkbox("Test", &___test);
-    ImGui::SliderInt("Debug Int", &_debug_int, 0, 6);
+    if (ImGui::CollapsingHeader("Test")) {
+        const bool temp_test_start = _test_start && !check_test_end();
+        if (temp_test_start) { ImGui::BeginDisabled(); }
+        ImGui::RadioButton("equal spp", (int*)(&_test_type), 1);
+        ImGui::SameLine(); ImGui::RadioButton("equal time", (int*)(&_test_type), 2);
+        if (_test_type == EQUAL_SPP) {
+            ImGui::SliderInt("spp", &_test_spp, 100, 1000);
+        } else if (_test_type == EQUAL_TIME) {
+            ImGui::SliderFloat("time", &_test_time, 1, 10);
+        }
 
-
+        bool _temp_test_start = _test_start;
+        ImGui::Checkbox("Test Start", &_test_start);
+        if (!_temp_test_start && _test_start) {
+            _time_start = _frame_time_samples.back();
+            _spp = 1;
+        }
+        if (temp_test_start) { ImGui::EndDisabled(); }
+    }
     // ui end
 
     ImGui::Render();
@@ -228,8 +243,8 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     if (_ppg_on) {
         // update tree
         if (_ppg_train_on) {
-            if (_ppg_skip_first_data_obtain) {
-                _ppg_skip_first_data_obtain = false;
+            if (_ppg_skip_first_data_obtain >= 0) {
+                --_ppg_skip_first_data_obtain;
             } else {
                 VkBufferCopy copy = {};
                 copy.srcOffset = 0;
@@ -244,8 +259,10 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                     DTree* d_root = _dtree.data();
                     RecordPerPixel* d = static_cast<RecordPerPixel*>(data);
                     const uint32_t windows_size = _window_extent.width * _window_extent.height;
+                    bool should_update_sdtree = false;
                     for (uint32_t i = 0; i < windows_size; ++i) {
                         if (d->num != 0) {
+                            should_update_sdtree = true;
                             for (int num_idx = 0; num_idx < d->num; ++num_idx) {
                                 auto& pos = d->record[num_idx].p;
                                 auto& dir = d->record[num_idx].d;
@@ -257,13 +274,17 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                         }
                         ++d;
                     }
-                    //for (int i = 0; i <= STree::__node_index; ++i) {
-                    //    int dtree_index = DTree::get_root_index_by_STree_index(i);
-                    //    if (d_root[dtree_index]._flux) {
-                    //        d_root[dtree_index].update(dtree_index, 0);
-                    //    }
-                    //}
-                    //s_root->update(0, 0, 20000);
+                    if (should_update_sdtree) {
+                        for (int i = 0; i <= STree::__node_index; ++i) {
+                            int dtree_index = DTree::get_root_index_by_STree_index(i);
+                            if (d_root[dtree_index]._flux) {
+                                d_root[dtree_index].update(dtree_index, 0);
+                            }
+                        }
+                        s_root->update(0, 0, 20000);
+                    } else {
+                        std::cout << "[SDTree] No update this iteration!" << std::endl;
+                    }
                     vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
 
                     //if (li_record.begin() != li_record.end()) {
@@ -339,7 +360,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
     uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
     uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
-    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane()*100, Deg2Rad(mCamera.GetFovY()), 0.0f);
+    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane() * 100, Deg2Rad(mCamera.GetFovY()), 0.0f);
     uniform_data.accumulate_spp = _spp;
     uniform_data.random_seed = rand();
     uniform_data.light_strength = _light_strength;
@@ -348,7 +369,6 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.mirror_id = _mirror_id;
     uniform_data.ppg_train_on = _ppg_on && _ppg_train_on;
     uniform_data.ppg_test_on = _ppg_on && _ppg_test_on;
-    uniform_data.debug_int = _debug_int;
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -400,10 +420,10 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     };
 
     VkStridedDeviceAddressRegionKHR callable_region = {};
-    if (!(___test && _spp >= 1000)) {
+    if (!(_test_start && check_test_end())) {
         _loader_manager->vkCmdTraceRaysKHR(cmd, &raygen_region, &missRegion, &hitRegion, &callable_region, _window_extent.width, _window_extent.height, 1u);
     }
-    
+
     // copy to swapchain
     // TODO: need more specific cmd stage
     rt_utils::image_barrier(cmd,
@@ -453,6 +473,25 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     draw_imgui(cmd);
 }
 
+bool RTApp::check_test_end() {
+    bool ret = true;
+    switch (_test_type) {
+    case EQUAL_SPP:
+        ret = (_spp >= _test_spp);
+        break;
+    case EQUAL_TIME:
+        auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(
+            _frame_time_samples.back() - _time_start);
+        ret = delta.count() >= _test_time;
+        break;
+    case NONE:
+    default:
+        ret = true;
+        break;
+    }
+    return ret;
+}
+
 RTApp::RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :_frame_time_samples(30) {
     _window_extent.width = width;
     _window_extent.height = height;
@@ -468,7 +507,7 @@ RTApp::~RTApp() {
 }
 
 
-int get_dtree_index(vec3 position, STree *s_root) {
+int get_dtree_index(vec3 position, STree* s_root) {
     int index = 0;
     int depth = 0;
     STree* now = s_root + index;
@@ -505,13 +544,13 @@ vec3 thetaphi2xyz(vec2 tp) {
     return vec3(sin_theta * sc_phi.y, sin_theta * sc_phi.x, cos_theta);
 }
 
-float sample_direction(vec3 direction, int index, DTree * d_root) {
+float sample_direction(vec3 direction, int index, DTree* d_root) {
     std::random_device seed;
     std::ranlux48 engine(seed());
-    std::uniform_real_distribution<> distrib(0,1.0f);
+    std::uniform_real_distribution<> distrib(0, 1.0f);
 
     index = (index << DTREE_MAX_NODE_BIT);
-    DTree* now = d_root+index;
+    DTree* now = d_root + index;
     float root_flux = now->_flux;
     vec4 interval = vec4(0.0f, 1.0f, 0.0f, 1.0f);
     int depth = 0;
@@ -525,7 +564,7 @@ float sample_direction(vec3 direction, int index, DTree * d_root) {
                 break;
             }
         }
-    
+
         float t1 = interval[0];
         float t2 = interval[1];
         float p1 = interval[2];
@@ -536,13 +575,13 @@ float sample_direction(vec3 direction, int index, DTree * d_root) {
         interval[1] = ((idx & 1) == 0) ? tm : t2;
         interval[2] = ((idx >> 1) == 0) ? p1 : pm;
         interval[3] = ((idx >> 1) == 0) ? pm : p2;
-    
+
         ++depth;
         index = now->_child_index[idx];
         now = d_root + index;
     }
 
-    float pdf = now->_flux / root_flux / (4*BB_PI);
+    float pdf = now->_flux / root_flux / (4 * BB_PI);
     //pdf *= pow(4, depth);
     vec2 dir;
     dir[0] = (distrib(engine) * (interval[1] - interval[0]) + interval[0]);
@@ -629,9 +668,6 @@ void RTApp::run() {
 
     // main loop
     while (!b_quit) {
-        // FPS
-        _frame_time_samples.push(std::chrono::high_resolution_clock::now());
-
         mCamera.SetCameraUnChanged();
 
         // Handle events on queue
@@ -644,7 +680,12 @@ void RTApp::run() {
 }
 
 void RTApp::init_per_frame() {
-    ++_spp;
+    if (_test_start && check_test_end()) {
+    } else {
+        // FPS
+        _frame_time_samples.push(std::chrono::high_resolution_clock::now());
+        ++_spp;
+    }
 
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplSDL2_NewFrame(_window);
@@ -1151,7 +1192,7 @@ void RTApp::init_offscreen_image() {
         _window_extent.height,
         1
     };
-    
+
     _offscreen_image.resize(2);
     std::vector<VkImageUsageFlags> usage_flags = {
         { VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT },

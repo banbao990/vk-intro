@@ -177,7 +177,7 @@ void DTree::update(const int index, const float flux) {
 
         // no space left
         if (idx == -1) { return; }
-        const float flux_to_add = flux / DTREE_CHILD_NODE;
+        const float flux_to_add = _flux / DTREE_CHILD_NODE;
         for (int i = 0; i < DTREE_CHILD_NODE; ++i) {
             _child_index[i] = idx;
             (this + (idx - index))->update(idx, flux_to_add);

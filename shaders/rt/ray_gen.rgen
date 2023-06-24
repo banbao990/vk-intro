@@ -298,6 +298,9 @@ void main() {
     vec3 position_iter[SWS_MAX_RECURSION];
     vec2 direction_iter[SWS_MAX_RECURSION];
 
+    // guard
+    RCBuffer.data[rc_index].num = 0;
+
     for (int i = 0; i < SWS_MAX_RECURSION; ++i) {
         throughput_iter[i] = vec3(1.0f, 1.0f, 1.0f);
         throughout_pdf_iter[i] = 1.0f;
@@ -370,28 +373,34 @@ void main() {
 
                 if (Params.ppg_test_on == 1) {
                     int dindex = get_dtree_index(hitPos);
-
-                   // if (sample_dtree.data[(dindex << DTREE_MAX_NODE_BIT)]._flux[0] <= 1e-6) {
-                   //     // only BRDF
-                   //     sample_lambertian(wseed, hitNormal, direction, pdf);
-                   // } else {
-                   //     float pdf1, pdf2;
-                   //     if (RandomFloat(wseed) < 0.5f) {
-                   //       sample_direction(direction, wseed, dindex, pdf1);
-                            sample_direction(direction, wseed, dindex, pdf);
-                            if (dot(hitNormal, direction) < 0.0) {
-                                // stop if no contribution
-                                break;
-                   //         } else {
-                   //            eval_lambertian(hitNormal, direction, pdf2);
-                            }
-                   //     } else {
-                   //         // only BRDF
-                   //         sample_lambertian(wseed, hitNormal, direction, pdf2);
-                   //         eval_direction(direction, dindex, pdf1);
-                   //     }
-                   //     pdf = 0.5 * (pdf1 + pdf2);
-                   // }
+#if 0 // only SDTree
+                    sample_direction(direction, wseed, dindex, pdf);
+                    if (dot(hitNormal, direction) < 0.0) {
+                        // stop if no contribution
+                        break;
+                    }
+#else // MIS
+                    if (sample_dtree.data[(dindex << DTREE_MAX_NODE_BIT)]._flux[0] <= 1e-6) {
+                        // only BRDF
+                        sample_lambertian(wseed, hitNormal, direction, pdf);
+                    } else {
+                        float pdf1, pdf2;
+                        if (RandomFloat(wseed) < 0.5f) {
+                          sample_direction(direction, wseed, dindex, pdf1);
+                          if (dot(hitNormal, direction) < 0.0) {
+                              // stop if no contribution
+                              break;
+                            } else {
+                               eval_lambertian(hitNormal, direction, pdf2);
+                          }
+                        } else {
+                            // only BRDF
+                            sample_lambertian(wseed, hitNormal, direction, pdf2);
+                            eval_direction(direction, dindex, pdf1);
+                        }
+                        pdf = 0.5 * (pdf1 + pdf2);
+                    }
+#endif
                 } else {
                     // only BRDF
                     sample_lambertian(wseed, hitNormal, direction, pdf);

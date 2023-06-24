@@ -32,6 +32,10 @@
     std::cout << xname.substr(2, xname.size() - 1) << ": " << X <<std::endl;\
 }
 
+enum TEST_TYPE {
+    NONE, EQUAL_SPP, EQUAL_TIME
+};
+
 class RTApp {
 public:
     bool _ppg_on{ false };
@@ -121,7 +125,7 @@ protected:
     void basic_clean_up();
 
     // frame Data
-    static const uint32_t FRAME_OVERLAP = 2U;
+    static const uint32_t FRAME_OVERLAP = 2U; // TODO: !!!! error when set = 4
     FrameData _frames[FRAME_OVERLAP]{};
 
     // immediately execute
@@ -157,7 +161,6 @@ protected:
 
     LoaderManager* _loader_manager;
 
-    bool ___test{ false };
     uint32_t _spp{ 0 };
     int _light_id{ 100 };
     int _glass_id{ 100 };
@@ -177,11 +180,18 @@ protected:
     vec2                            mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};
 
+    // test
+    TEST_TYPE _test_type{ NONE };
+    bool _test_on{ false };
+    bool _test_start{ false };
+    int _test_spp{ 100 };
+    std::chrono::high_resolution_clock::time_point _time_record_start{};
+    float _test_time{ 5.0f };
+    bool check_test_end();
 
     // ppg
-    int _debug_int{ 0 };
     bool _ppg_train_on{ false };
-    bool _ppg_skip_first_data_obtain{ false };
+    int _ppg_skip_first_data_obtain{ 2 }; // TODO: why skip 2
     bool _ppg_test_on{ false };
     bool _ppg_update_gpu_sdtree{ false };
     std::vector<STree> _stree{};
