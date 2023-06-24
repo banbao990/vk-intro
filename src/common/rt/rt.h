@@ -24,6 +24,7 @@
 #include "sbtHelper.h"
 #include "rtHelper.h"
 #include "camera.h"
+#include "ppg.h"
 
 #define NAME(X) #X
 #define OUTPUT_KV(X) {                                                      \
@@ -31,8 +32,14 @@
     std::cout << xname.substr(2, xname.size() - 1) << ": " << X <<std::endl;\
 }
 
+enum TEST_TYPE {
+    NONE, EQUAL_SPP, EQUAL_TIME
+};
+
 class RTApp {
 public:
+    bool _ppg_on{ false };
+
     RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer);
     virtual ~RTApp();
 
@@ -110,7 +117,6 @@ protected:
     void init_pipeline();
     void init_sync_structures();
     void init_scenes();
-    void render();
 
     void init_commands_for_graphics_pipeline();
     void init_sync_structures_for_graphics_pass();
@@ -119,7 +125,7 @@ protected:
     void basic_clean_up();
 
     // frame Data
-    static const uint32_t FRAME_OVERLAP = 2U;
+    static const uint32_t FRAME_OVERLAP = 2U; // TODO: !!!! error when set = 4
     FrameData _frames[FRAME_OVERLAP]{};
 
     // immediately execute
@@ -130,8 +136,13 @@ protected:
     Descriptor _descriptors{};
     AllocatedBuffer _uniform_data_buffer{};
 
+    uint32_t _radiance_cache_buffer_size{};
+    AllocatedBuffer _radiance_cache_gpu{};
+    AllocatedBuffer _radiance_cache_cpu{};
+
     // Ray Tracing
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR _rt_properties{};
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR _as_property{};
     std::vector<VkDescriptorSetLayout> _rt_set_layout{};
     std::vector<VkDescriptorSet> _rt_set{};
 
@@ -151,6 +162,10 @@ protected:
     LoaderManager* _loader_manager;
 
     uint32_t _spp{ 0 };
+    int _light_id{ 100 };
+    int _glass_id{ 100 };
+    int _mirror_id{ 100 };
+    float _light_strength{ 1.0f };
     std::chrono::high_resolution_clock::time_point _time_start{};
 
     // camera & user input
@@ -165,7 +180,31 @@ protected:
     vec2                            mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};
 
+    // test
+    TEST_TYPE _test_type{ NONE };
+    bool _test_on{ false };
+    bool _test_start{ false };
+    int _test_spp{ 100 };
+    std::chrono::high_resolution_clock::time_point _time_record_start{};
+    float _test_time{ 5.0f };
+    bool check_test_end();
+
+    // ppg
+    bool _ppg_train_on{ false };
+    int _ppg_skip_first_data_obtain{ 2 }; // TODO: why skip 2
+    bool _ppg_test_on{ false };
+    bool _ppg_update_gpu_sdtree{ false };
+    std::vector<STree> _stree{};
+    std::vector<DTree> _dtree{};
+    uint32_t _stree_buffer_size{};
+    uint32_t _dtree_buffer_size{};
+    AllocatedBuffer _stree_gpu{};
+    AllocatedBuffer _stree_cpu{};
+    AllocatedBuffer _dtree_gpu{};
+    AllocatedBuffer _dtree_cpu{};
+
 public:
     void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
     void add_to_deletion_queue(std::function<void()>&& function);
+    uint32_t get_min_acceleration_structure_scratch_offset_alignment();
 };

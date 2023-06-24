@@ -8,7 +8,7 @@ add_library(${pro_name}
     "shared_with_shaders.h"
     "common.h"
     "rtHelper.h"
- "rtHelper.cpp" "camera.h" "camera.cpp")
+ "rtHelper.cpp" "camera.h" "camera.cpp" "ppg.h" "ppg.cpp")
 
 set_property(TARGET ${pro_name} PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "$<TARGET_FILE_DIR:${pro_name}>")
 
