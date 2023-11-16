@@ -4,5 +4,8 @@
 *.spv
 /out
 *.bin
-/shaders/rt/shared_with_shaders.h
 /assets/CornellBox/*
+
+# auto generated
+/shaders/rt/shared_with_shaders.h
+/shaders/rt/disney.h

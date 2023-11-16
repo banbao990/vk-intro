@@ -2,6 +2,7 @@
 #version 460
 #extension GL_EXT_ray_tracing : enable
 #extension GL_GOOGLE_include_directive : require
+#extension GL_EXT_scalar_block_layout : enable
 
 #include "shared_with_shaders.h"
 #define DTREE_MAX_NODE_BIT 9
@@ -34,7 +35,7 @@ layout(std140, set = SWS_DTREE_SET, binding = SWS_DTREE_BINDING) buffer readonly
     DTree data[];
 } sample_dtree;
 
-layout(set = SWS_CAMDATA_SET,       binding = SWS_CAMDATA_BINDING, std140)     uniform AppData {
+layout(std430, set = SWS_CAMDATA_SET,       binding = SWS_CAMDATA_BINDING)     uniform AppData {
     UniformParams Params;
 };
 
@@ -257,13 +258,15 @@ void sample_lambertian(inout uint wseed, in vec3 normal, out vec3 direction, out
     local2world[0] = cross(normal, local2world[1]); // left hand
     // dirty implment
 
-    direction = local2world * localDirection;
+    direction = normalize(local2world * localDirection);
 }
 
 void eval_lambertian(in vec3 normal, in vec3 direction, out float pdf) {
     direction = normalize(direction);
     pdf = dot(normal, direction) / MY_PI;
 }
+
+#include "disney.glsl"
 
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
@@ -290,7 +293,12 @@ void main() {
     //for(uint spp_index = 0; spp_index < RECORD_NUM; ++spp_index) {
     vec3 origin = Params.camPos.xyz;
     vec3 direction = CalcRayDir(uv, aspect);
-    vec3 throughput = vec3(1.0f, 1.0f, 1.0f);
+
+    // cos?
+    float cosWeight = 1.0f;
+    // cosWeight = abs(dot(normalize(cross(Params.camSide.xyz, Params.camUp.xyz)), direction));
+
+    vec3 throughput = vec3(1.0f, 1.0f, 1.0f) * cosWeight;
     float throughout_pdf = 1.0f;
 
     vec3 throughput_iter[SWS_MAX_RECURSION];
@@ -367,6 +375,19 @@ void main() {
                     }
                 }
                 break;
+            } else if(objectId == Params.disney_param._id) {
+                // disney brdf
+                float pdf;
+                vec3 bsdf_val; // multiply base color
+                Disney disney = Params.disney_param._disney;
+
+                vec3 direction_in = -direction;
+                sample_lambertian(wseed, hitNormal, direction, pdf);
+                eval_disney(wseed, disney, hitNormal, direction, direction_in, bsdf_val);
+
+                origin = hitPos + hitNormal * 0.001f;
+                throughput *= bsdf_val;
+                throughout_pdf *= pdf;
             } else {
                 // we hit diffuse primitive - simple lambertian
                 float pdf;
@@ -417,7 +438,7 @@ void main() {
                     position_iter[i] = hitPos;
                     direction_iter[i] = xyz2thetaphi(direction);
                     for (int j = 0; j <= i; ++j) {
-                        throughput_iter[j] *= bsdf_val * hitColor;
+                        throughput_iter[j] *= bsdf_val * hitColor; // should we remove it for ppg?
                         throughout_pdf_iter[j] *= pdf;
                     }
                 }

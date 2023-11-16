@@ -1,6 +1,8 @@
 #ifndef SHARED_WITH_SHADERS_H
 #define SHARED_WITH_SHADERS_H
 
+#include "disney.h"
+
 #ifdef __cplusplus
 // include vec & mat types (same namings as in GLSL)
 #include "common.h"
@@ -53,8 +55,9 @@
 #define RECORD_NUM 8
 
 
-#define BB_PI (3.141592653589793f)
-#define BB_PI2 (BB_PI * 2.0f)
+#define BB_PI       (3.141592653589793f)
+#define BB_PI_INV   (0.3183098861837907f)
+#define BB_PI2      (BB_PI * 2.0f)
 #define BB_PI_DIV_2 (BB_PI * 0.5f)
 
 struct RadianceCache {
@@ -86,7 +89,6 @@ struct VertexAttribute {
     vec4 uv;
 };
 
-// packed std140
 struct UniformParams {
     // Lighting
     vec4 sunPosAndAmbient;
@@ -102,12 +104,18 @@ struct UniformParams {
     int accumulate_spp;
     int random_seed;
 
+    // material
     float light_strength;
     int light_id;
     int glass_id;
     int mirror_id;
+
+    // ppg
     int ppg_train_on;
     int ppg_test_on;
+
+    // !!! attention the alignment !!!
+    DisneyParam disney_param;
 };
 
 

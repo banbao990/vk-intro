@@ -95,6 +95,10 @@ void RTApp::init_imgui() {
     );
 }
 
+void RTApp::reset() {
+    _spp = 1;
+    _time_start = _frame_time_samples.back();
+}
 
 void RTApp::draw_imgui(VkCommandBuffer cmd) {
     VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(_render_pass_for_imgui, _window_extent, _framebuffers_for_imgui[_swapchain_image_index]);
@@ -122,19 +126,52 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
     if (ImGui::CollapsingHeader("Light")) {
         ++id;
         ImGui::PushID(id);
+
         ImGui::SliderFloat("Light Strength", &_light_strength, 0.1f, 10.0f);
+
         int temp = _light_id;
         ImGui::SliderInt("Light ID", &_light_id, 0, 20);
-        if (temp != _light_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
-        temp = _glass_id;
-        ImGui::SliderInt("Glass ID", &_glass_id, 0, 20);
-        if (temp != _glass_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
-        temp = _mirror_id;
-        ImGui::SliderInt("Mirror ID", &_mirror_id, 0, 20);
+        if (temp != _light_id) { reset(); }
 
-        if (temp != _mirror_id) { _spp = 1;  _time_start = _frame_time_samples.back(); }
         ImGui::PopID();
     }
+
+    if (ImGui::CollapsingHeader("Scatter")) {
+        ++id;
+        ImGui::PushID(id);
+
+        int temp = _mirror_id;
+        ImGui::SliderInt("Mirror ID", &_mirror_id, 0, 20);
+        if (temp != _mirror_id) { reset(); }
+
+        temp = _glass_id;
+        ImGui::SliderInt("Glass ID", &_glass_id, 0, 20);
+        if (temp != _glass_id) { reset(); }
+
+        if (ImGui::TreeNode("Disney")) {
+            ++id;
+            ImGui::PushID(id);
+
+            Disney& disney = _disney_param._disney;
+
+            bool disney_changed = false;
+            temp = _disney_param._id;
+            ImGui::SliderInt("Disney ID", &_disney_param._id, 0, 20);
+            if (temp != _disney_param._id) { reset(); }
+
+            disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
+            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Subsurface", &disney._subsurface, 0.0f, 1.0f);
+
+            if (disney_changed) { reset(); }
+
+            ImGui::PopID();
+            ImGui::TreePop();
+        }
+
+        ImGui::PopID();
+    }
+
     if (ImGui::CollapsingHeader("PPG")) {
         ImGui::Checkbox("PPG On", &_ppg_on);
         //if (STree::__trained_spp > 200) {
@@ -369,6 +406,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.mirror_id = _mirror_id;
     uniform_data.ppg_train_on = _ppg_on && _ppg_train_on;
     uniform_data.ppg_test_on = _ppg_on && _ppg_test_on;
+    uniform_data.disney_param = _disney_param;
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -1385,14 +1423,28 @@ void RTApp::init_scenes() {
     // mCamera.SetFovY(45.0f);
     // mCamera.LookAt(vec3(0.577f,0.791f,0.744f), vec3(0.081f,1.257f,0.011f));
 
+    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
+    // mCamera.SetViewPlanes(0.1f, 100.0f);
+    // mCamera.SetFovY(45.0f);
+    // mCamera.LookAt(vec3(0.546f, 0.662f, 2.262f), vec3(0.499f, 0.596f, 1.265f));
+
     mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
     mCamera.SetViewPlanes(0.1f, 100.0f);
     mCamera.SetFovY(45.0f);
-    mCamera.LookAt(vec3(0.546f, 0.662f, 2.262f), vec3(0.499f, 0.596f, 1.265f));
+    mCamera.LookAt(vec3(0.506f, 0.761f, 0.978f), vec3(0.205f, 0.979f, 0.049f));
 
     _light_id = 7;
     _glass_id = 10;
     _mirror_id = 13;
+    _disney_param._id = 8;
+
+    _disney_param._disney = {
+        // base color
+        vec3(0.5f, 0.5f, 0.1f),
+        // roughness, subsurface, metallic
+        0.5f, 0.5f
+    };
+
     // load scenes
     //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox-sphere.obj");
     //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox.obj");

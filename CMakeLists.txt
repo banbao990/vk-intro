@@ -5,7 +5,7 @@ cmake_minimum_required (VERSION 3.20)
 project ("vulkan_guide")
 
 # configration
-set(USE_THIRD_PARTY_SDL ON)
+set(USE_THIRD_PARTY_SDL OFF)
 
 set(CMAKE_CXX_STANDARD 17)
 
@@ -44,6 +44,7 @@ endforeach(GLSL)
 
 # ray tracing
 configure_file( "${PROJECT_SOURCE_DIR}/src/common/rt/shared_with_shaders.h" "${PROJECT_SOURCE_DIR}/shaders/rt/shared_with_shaders.h" COPYONLY)
+configure_file( "${PROJECT_SOURCE_DIR}/src/common/rt/disney.h" "${PROJECT_SOURCE_DIR}/shaders/rt/disney.h" COPYONLY)
 
 file(GLOB_RECURSE RT_SHADER_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/rt/*.rgen"

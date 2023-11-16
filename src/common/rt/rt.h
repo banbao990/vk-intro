@@ -25,6 +25,7 @@
 #include "rtHelper.h"
 #include "camera.h"
 #include "ppg.h"
+#include "disney.h"
 
 #define NAME(X) #X
 #define OUTPUT_KV(X) {                                                      \
@@ -166,6 +167,7 @@ protected:
     int _glass_id{ 100 };
     int _mirror_id{ 100 };
     float _light_strength{ 1.0f };
+    DisneyParam _disney_param{};
     std::chrono::high_resolution_clock::time_point _time_start{};
 
     // camera & user input
@@ -188,6 +190,7 @@ protected:
     std::chrono::high_resolution_clock::time_point _time_record_start{};
     float _test_time{ 5.0f };
     bool check_test_end();
+    void reset();
 
     // ppg
     bool _ppg_train_on{ false };
