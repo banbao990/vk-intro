@@ -122,7 +122,15 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ImGui::Text("side: %.3f, %.3f, %.3f", mCamera.GetSide()[0], mCamera.GetSide()[1], mCamera.GetSide()[2]);
         ImGui::PopID();
     }
-
+    if (ImGui::CollapsingHeader("Film")) {
+        ++id;
+        ImGui::PushID(id);
+        ImGui::Checkbox("Enable Clamp", &_clamp_on);
+        if (_clamp_on) {
+            ImGui::InputFloat("Clamp Max Value", &_clamp_max, 10.0f, 100.0f);
+        }
+        ImGui::PopID();
+    }
     if (ImGui::CollapsingHeader("Light")) {
         ++id;
         ImGui::PushID(id);
@@ -136,7 +144,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ImGui::PopID();
     }
 
-    if (ImGui::CollapsingHeader("Scatter")) {
+    if (ImGui::CollapsingHeader("Scatter Material")) {
         ++id;
         ImGui::PushID(id);
 
@@ -149,6 +157,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         if (temp != _glass_id) { reset(); }
 
         if (ImGui::TreeNode("Disney")) {
+            ImGui::Text("Glass Component is not work!");
             ++id;
             ImGui::PushID(id);
 
@@ -160,8 +169,23 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             if (temp != _disney_param._id) { reset(); }
 
             disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
-            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.1f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Subsurface", &disney._subsurface, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Metallic", &disney._metallic, 0.0f, 1.0f);
+
+            temp = disney._is_refractive;
+            ImGui::Checkbox("Is Refractive", (bool*)&disney._is_refractive);
+            disney_changed |= (temp != disney._is_refractive);
+
+            disney_changed |= ImGui::SliderFloat("Anisotropic", &disney._anisotropic, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Index of Refraction", &disney._eta, 0.5f, 2.0f);
+            disney_changed |= ImGui::SliderFloat("Clearcoat Gloss", &disney._clearcoat_gloss, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Sheen Tint", &disney._sheen_tint, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Specular Transmission", &disney._specular_transmission, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Clearcoat", &disney._clearcoat, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Specular Tint", &disney._specular_tint, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Sheen", &disney._sheen, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Specular", &disney._specular, 0.0f, 1.0f);
 
             if (disney_changed) { reset(); }
 
@@ -407,6 +431,10 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.ppg_train_on = _ppg_on && _ppg_train_on;
     uniform_data.ppg_test_on = _ppg_on && _ppg_test_on;
     uniform_data.disney_param = _disney_param;
+
+    uniform_data.clamp_on = _clamp_on;
+    uniform_data.clamp_max = _clamp_max;
+
     mLastRec = _frame_time_samples.back();
 
     char* data = nullptr;
@@ -1431,19 +1459,28 @@ void RTApp::init_scenes() {
     mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
     mCamera.SetViewPlanes(0.1f, 100.0f);
     mCamera.SetFovY(45.0f);
-    mCamera.LookAt(vec3(0.506f, 0.761f, 0.978f), vec3(0.205f, 0.979f, 0.049f));
+    mCamera.LookAt(vec3(0.506f, 0.761f, 0.978f), vec3(0.419f, 0.834f, -0.016f));
 
     _light_id = 7;
     _glass_id = 10;
     _mirror_id = 13;
-    _disney_param._id = 8;
 
-    _disney_param._disney = {
-        // base color
-        vec3(0.5f, 0.5f, 0.1f),
-        // roughness, subsurface, metallic
-        0.5f, 0.5f
-    };
+    _disney_param._id = 8;
+    Disney& disney = _disney_param._disney;
+    disney._base_color = vec3(0.357798f, 0.603660f, 0.640000f); // the same as the plane
+    disney._roughness = 0.8f;
+    disney._subsurface = 0.5f;
+    disney._anisotropic = 0.8f;
+    disney._metallic = 1.0f;
+    disney._eta = 1.5f;
+    disney._clearcoat_gloss = 0.5f;
+    disney._sheen_tint = 0.2f;
+    disney._is_refractive = false;
+    disney._specular_transmission = 0.5f;
+    disney._specular_tint = 0.5f;
+    disney._clearcoat = 0.5f;
+    disney._sheen = 0.5f;
+    disney._specular = 0.5f;
 
     // load scenes
     //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox-sphere.obj");

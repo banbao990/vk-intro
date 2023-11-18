@@ -114,6 +114,11 @@ struct UniformParams {
     int ppg_train_on;
     int ppg_test_on;
 
+    // clamp
+    int clamp_on;
+    float clamp_max;
+    int p1, p2;
+
     // !!! attention the alignment !!!
     DisneyParam disney_param;
 };

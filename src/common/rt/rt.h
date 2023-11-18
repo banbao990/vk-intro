@@ -168,6 +168,8 @@ protected:
     int _mirror_id{ 100 };
     float _light_strength{ 1.0f };
     DisneyParam _disney_param{};
+    bool _clamp_on{ false };
+    float _clamp_max{ 10000.0f };
     std::chrono::high_resolution_clock::time_point _time_start{};
 
     // camera & user input

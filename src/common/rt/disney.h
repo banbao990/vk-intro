@@ -6,19 +6,27 @@
 #include "common.h"
 #endif // __cplusplus
 
-#ifndef __cplusplus
-layout(std430)
-#endif // !__cplusplus
+
 struct Disney {
     vec3 _base_color;
     float _roughness;
+
     float _subsurface;
-    float padding1, padding2, padding3;
+    float _anisotropic;
+    float _metallic;
+    float _clearcoat_gloss;
+
+    int _is_refractive;
+    float _eta; // internal IOR / externalIOR, IOR(index of refraction)
+    float _sheen_tint;
+    float _specular_transmission;
+
+    float _specular_tint;
+    float _clearcoat;
+    float _sheen;
+    float _specular;
 };
 
-#ifndef __cplusplus
-layout(std430)
-#endif // !__cplusplus
 struct DisneyParam {
     Disney _disney;
     int _id;

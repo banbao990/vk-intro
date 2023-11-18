@@ -6,6 +6,7 @@
 
 #include "shared_with_shaders.h"
 #define DTREE_MAX_NODE_BIT 9
+#define DIRECTION_FORWARD 1e-5f
 
 struct STree {
     ivec4 _child_index; // padding 2
@@ -251,9 +252,9 @@ void sample_lambertian(inout uint wseed, in vec3 normal, out vec3 direction, out
     pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
 
     // dirty implement
-    mat3 local2world;
+    mat3 local2world; // col majar
     const vec3 a = (abs(normal[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
-    local2world[2] = normal;
+    local2world[2] = normal; // local's z-axis is normal (description in world frame)
     local2world[1] = normalize(cross(normal, a));
     local2world[0] = cross(normal, local2world[1]); // left hand
     // dirty implment
@@ -339,8 +340,8 @@ void main() {
             const vec3 hitPos = origin + direction * hitDistance;
 
             if (objectId == Params.mirror_id) {
-                origin = hitPos + hitNormal * 0.001f;
                 direction = reflect(direction, hitNormal);
+                origin = hitPos + direction * DIRECTION_FORWARD;
             } else if (objectId == Params.glass_id) {
                 const float NdotD = dot(hitNormal, direction);
                 vec3 refrNormal = hitNormal;
@@ -353,8 +354,8 @@ void main() {
                     refrEta = kBunnyRefractionIndex;
                 }
 
-                origin = hitPos + direction * 0.001f;
                 direction = refract(direction, refrNormal, refrEta);
+                origin = hitPos + direction * DIRECTION_FORWARD;
                 // full reflection
                 // if(dot(direction,direction)==0){break;}
            //   } else if (objectId == OBJECT_ID_LIGHT) {
@@ -363,7 +364,7 @@ void main() {
                 vec3 fixed_light_color = vec3(30.0f);
                 // finalColor += clamp(fixed_light_color * throughput / throughout_pdf, 0.0f, 1000.0f);
                 // finalColor += fixed_light_color * throughput_iter[0] / throughout_pdf_iter[0];
-                finalColor += fixed_light_color * throughput / throughout_pdf;
+                finalColor += fixed_light_color * throughput / max(throughout_pdf, 1e-6);
                 // finalColor += hitColor * throughput / throughout_pdf;
 
                 if (Params.ppg_train_on == 1) {
@@ -383,9 +384,20 @@ void main() {
 
                 vec3 direction_in = -direction;
                 sample_lambertian(wseed, hitNormal, direction, pdf);
-                eval_disney(wseed, disney, hitNormal, direction, direction_in, bsdf_val);
+                if(disney._is_refractive > 0) {
+                    // in -> out
+                    if(dot(hitNormal, direction_in) < 0) {
+                        // must go out
+                    } else {
+                        pdf *= 0.5f;
+                        if(RandomFloat(wseed) < 0.5f) {
+                            direction = -direction;
+                        }
+                    }
+                }
+                eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
 
-                origin = hitPos + hitNormal * 0.001f;
+                origin = hitPos + direction * DIRECTION_FORWARD;
                 throughput *= bsdf_val;
                 throughout_pdf *= pdf;
             } else {
@@ -430,7 +442,7 @@ void main() {
                 float bsdf_val;
                 eval_lambertian(hitNormal, direction, bsdf_val);
 
-                origin = hitPos + hitNormal * 0.001f;
+                origin = hitPos + direction * DIRECTION_FORWARD;
                 throughput *= bsdf_val * hitColor;
                 throughout_pdf *= pdf;
 
@@ -471,7 +483,10 @@ void main() {
     //     RCBuffer.data[rc_index].record[j].d = vec4(11,22,33,44);
     // }
 
-
+    if(Params.clamp_on > 0) {
+        float cm = Params.clamp_max;
+        finalColor = min(finalColor, vec3(cm,cm,cm));
+    }
     uint spp = Params.accumulate_spp;
     if (spp != 1) {
         finalColor = (finalColor + (spp - 1) * imageLoad(AccumulatedImage, ivec2(gl_LaunchIDEXT.xy)).rgb) / spp;
