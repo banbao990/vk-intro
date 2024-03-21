@@ -15,7 +15,7 @@
 set(USE_THIRD_PARTY_SDL ON)
 ```
 
-+ 更多问题请查看课程给出的[腾讯文档](https://docs.qq.com/doc/DUlloeFpHeVhaUm1J)
++ 更多问题请查看课程给出的[腾讯文档](https://docs.qq.com/doc/DUnRZTmV3ek1wb1ZY)
 
 ## 参考项目
 + https://github.com/vblanco20-1/vulkan-guide/tree/all-chapters
