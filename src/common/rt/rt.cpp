@@ -157,7 +157,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         if (temp != _glass_id) { reset(); }
 
         if (ImGui::TreeNode("Disney")) {
-            ImGui::Text("Glass Component is not work!");
+            ImGui::Text("Glass Component is not work! Low roughness may cause convergenve problems!");
             ++id;
             ImGui::PushID(id);
 
@@ -1644,14 +1644,16 @@ void RTApp::init_scenes() {
                 pos.x = (pos.x - aabb.v[0][0]) / (aabb.v[0][1] - aabb.v[0][0]);
                 pos.y = (pos.y - aabb.v[1][0]) / (aabb.v[1][1] - aabb.v[1][0]);
                 pos.z = (pos.z - aabb.v[2][0]) / (aabb.v[2][1] - aabb.v[2][0]);
-
-                // normal.x = attrib.normals[3 * i.normal_index + 0];
-                // normal.y = attrib.normals[3 * i.normal_index + 1];
-                // normal.z = attrib.normals[3 * i.normal_index + 2];
+                // if (i.normal_index != -1) {
+                //     normal.x = attrib.normals[3 * i.normal_index + 0];
+                //     normal.y = attrib.normals[3 * i.normal_index + 1];
+                //     normal.z = attrib.normals[3 * i.normal_index + 2];
+                // } else {
                 auto tmp_normal = vertex_normals[i.vertex_index][0];
                 normal.x = tmp_normal.x;
                 normal.y = tmp_normal.y;
                 normal.z = tmp_normal.z;
+                // }
                 if (i.texcoord_index == -1) {
                     uv.x = 0.0f;
                     uv.y = 0.0f;

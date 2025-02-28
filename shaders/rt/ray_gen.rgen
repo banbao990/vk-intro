@@ -5,6 +5,11 @@
 #extension GL_EXT_scalar_block_layout : enable
 
 #include "shared_with_shaders.h"
+
+#ifndef PDF_EPS
+#define PDF_EPS 0.01
+#endif
+
 #define DTREE_MAX_NODE_BIT 9
 #define DIRECTION_FORWARD 1e-5f
 
@@ -103,7 +108,7 @@ vec3 random_cosine_direction(inout uint wseed) {
     float phi = MY_PI * 2 * r1;
     float x = cos(phi) * sqrt(r2);
     float y = sin(phi) * sqrt(r2);
-    return vec3(x, y, z);
+    return normalize(vec3(x, y, z));
 }
 
 // random sampler end
@@ -249,14 +254,16 @@ void eval_direction(in vec3 direction, in int index, out float pdf) {
 
 void sample_lambertian(inout uint wseed, in vec3 normal, out vec3 direction, out float pdf) {
     const vec3 localDirection = random_cosine_direction(wseed);
-    pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
+    // pdf = dot(localDirection, vec3(0.0f, 0.0f, 1.0f)) / MY_PI;
+    // pdf = max(localDirection.z * MY_INV_PI, PDF_EPS);
+    pdf = localDirection.z * MY_INV_PI;
 
     // dirty implement
     mat3 local2world; // col majar
     const vec3 a = (abs(normal[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
     local2world[2] = normal; // local's z-axis is normal (description in world frame)
     local2world[1] = normalize(cross(normal, a));
-    local2world[0] = cross(normal, local2world[1]); // left hand
+    local2world[0] = normalize(cross(normal, local2world[1])); // left hand
     // dirty implment
 
     direction = normalize(local2world * localDirection);
