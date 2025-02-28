@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector> 
+#include <vector>
 
 #include "types.h"
 
@@ -17,11 +17,13 @@ public:
     VkPipelineLayout _pipeline_layout = VK_NULL_HANDLE;
 
     VkPipelineDepthStencilStateCreateInfo _depth_stencil = {};
-    VkPipeline build_pipeline(VkDevice device, VkRenderPass pass, bool use_z_buffer, uint32_t subpass);
+    VkPipeline build_pipeline(VkDevice device, VkRenderPass pass, bool use_z_buffer,
+                              uint32_t subpass);
 
     // shaders
     void reset_shaders();
     void add_shaders(VkShaderStageFlagBits stage, VkShaderModule shader_module);
+
 private:
     std::vector<VkPipelineShaderStageCreateInfo> _shader_stages{};
 };

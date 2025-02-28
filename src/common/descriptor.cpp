@@ -23,12 +23,13 @@ void Descriptor::init_pool(VkDevice device) {
     _count.resize(type_num, 0);
 
     std::vector<VkDescriptorPoolSize> sizes{};
-    for (auto t : _types) {
-        sizes.push_back({ t, MAX_SIZE });
+    for (auto t: _types) {
+        sizes.push_back({t, MAX_SIZE});
     }
 
     VkDescriptorPoolCreateInfo pool_info = vkinit::descriptor_pool_create_info();
-    pool_info.flags = 0; // only set FREE_BIT, can call the vkFreeDescritorSet (free set individually)
+    pool_info.flags =
+        0;  // only set FREE_BIT, can call the vkFreeDescritorSet (free set individually)
     pool_info.maxSets = MAX_SIZE * type_num;
     pool_info.poolSizeCount = (uint32_t)sizes.size();
     pool_info.pPoolSizes = sizes.data();
@@ -36,15 +37,16 @@ void Descriptor::init_pool(VkDevice device) {
 }
 
 void Descriptor::destroy() {
-    for (VkDescriptorSetLayout& layout : _layouts) {
+    for (VkDescriptorSetLayout &layout: _layouts) {
         vkDestroyDescriptorSetLayout(_device, layout, nullptr);
     }
     vkDestroyDescriptorPool(_device, _descriptor_pool, nullptr);
 }
 
-VkDescriptorSetLayout Descriptor::create_set_layout(VkDescriptorType* type, VkShaderStageFlags* stage_flags, uint32_t binding_num,
-    uint32_t* descriptor_count, VkDescriptorSetLayoutBindingFlagsCreateInfo* binding_flags
-) {
+VkDescriptorSetLayout
+Descriptor::create_set_layout(VkDescriptorType *type, VkShaderStageFlags *stage_flags,
+                              uint32_t binding_num, uint32_t *descriptor_count,
+                              VkDescriptorSetLayoutBindingFlagsCreateInfo *binding_flags) {
     {
         // check size
         // TODO: 1 means what?
@@ -86,7 +88,8 @@ VkDescriptorSetLayout Descriptor::create_set_layout(VkDescriptorType* type, VkSh
     return layout;
 }
 
-void Descriptor::create_set(VkDescriptorSet* descriptor_set, VkDescriptorSetLayout* layout, uint32_t* descriptors_cnt, uint32_t num) {
+void Descriptor::create_set(VkDescriptorSet *descriptor_set, VkDescriptorSetLayout *layout,
+                            uint32_t *descriptors_cnt, uint32_t num) {
     uint32_t alloc_num = std::accumulate(descriptors_cnt, descriptors_cnt + num, 0);
     if ((_free_space - alloc_num) < 0) {
         std::cerr << "[Desctiptor Set] No free Set!" << std::endl;
@@ -95,9 +98,7 @@ void Descriptor::create_set(VkDescriptorSet* descriptor_set, VkDescriptorSetLayo
     _free_space -= alloc_num;
 
     VkDescriptorSetVariableDescriptorCountAllocateInfo num_info = {
-        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO,
-        nullptr
-    };
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO, nullptr};
     num_info.descriptorSetCount = num;
     num_info.pDescriptorCounts = descriptors_cnt;
 
@@ -112,7 +113,7 @@ void Descriptor::create_set(VkDescriptorSet* descriptor_set, VkDescriptorSetLayo
 
 VkDescriptorSet Descriptor::create_set(VkDescriptorSetLayout layout) {
 
-    if ((_free_space-1) < 0) {
+    if ((_free_space - 1) < 0) {
         std::cerr << "[Desctiptor Set] No free Set!" << std::endl;
         return VK_NULL_HANDLE;
     }
@@ -127,7 +128,8 @@ VkDescriptorSet Descriptor::create_set(VkDescriptorSetLayout layout) {
     return descriptor_set;
 }
 
-void Descriptor::bind(VkDescriptorSet descriptor_set, VkDescriptorBufferInfo* info, VkDescriptorType type, int binding) {
+void Descriptor::bind(VkDescriptorSet descriptor_set, VkDescriptorBufferInfo *info,
+                      VkDescriptorType type, int binding) {
     uint32_t index = std::find(_types.begin(), _types.end(), type) - _types.begin();
     if (index == _types.size()) {
         std::cerr << "[Desctiptor Set] VkDescriptorType not found: " << type << std::endl;
@@ -138,21 +140,20 @@ void Descriptor::bind(VkDescriptorSet descriptor_set, VkDescriptorBufferInfo* in
         return;
     }
 
-    VkWriteDescriptorSet write_set = vkinit::write_descriptor_buffer(
-        type, descriptor_set, info, binding
-    );
+    VkWriteDescriptorSet write_set =
+        vkinit::write_descriptor_buffer(type, descriptor_set, info, binding);
 
     vkUpdateDescriptorSets(_device, 1, &write_set, 0, nullptr);
 }
 
-void Descriptor::bind(VkDescriptorSet descriptor_set, VkDescriptorImageInfo* info, VkDescriptorType type, int binding) {
-    VkWriteDescriptorSet write_set = vkinit::write_descriptor_image(
-        type, descriptor_set, info, binding
-    );
+void Descriptor::bind(VkDescriptorSet descriptor_set, VkDescriptorImageInfo *info,
+                      VkDescriptorType type, int binding) {
+    VkWriteDescriptorSet write_set =
+        vkinit::write_descriptor_image(type, descriptor_set, info, binding);
 
     vkUpdateDescriptorSets(_device, 1, &write_set, 0, nullptr);
 }
 
-void Descriptor::bind(VkWriteDescriptorSet* write_set, uint32_t count) {
+void Descriptor::bind(VkWriteDescriptorSet *write_set, uint32_t count) {
     vkUpdateDescriptorSets(_device, count, write_set, 0, nullptr);
 }

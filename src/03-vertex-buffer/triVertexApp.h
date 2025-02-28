@@ -2,9 +2,10 @@
 
 #include "../common/rasterization/rasVertexApp.h"
 
-class TriVertexApp :public RasVertexApp {
+class TriVertexApp : public RasVertexApp {
 public:
-    TriVertexApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :RasVertexApp(name, width, height, use_validation_layer) {}
+    TriVertexApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer)
+        : RasVertexApp(name, width, height, use_validation_layer) {}
     virtual ~TriVertexApp() override;
 
 protected:
@@ -19,7 +20,8 @@ protected:
     // virtual void init_sync_structures() override;
     virtual void init_scenes() override;
     virtual void render() override;
-    // virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override;
+    // virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout,
+    // VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override;
 
 private:
     Mesh _tri_mesh{};

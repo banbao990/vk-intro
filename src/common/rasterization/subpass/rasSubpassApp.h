@@ -7,10 +7,12 @@
 // subpass 0 (output: color + depth)
 // subpass 1 (output: color)
 // can be easily extended to multiple color attachments
-class RasSubpassApp :public RasTexApp {
+class RasSubpassApp : public RasTexApp {
 public:
-    RasSubpassApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :RasTexApp(name, width, height, use_validation_layer) {}
+    RasSubpassApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer)
+        : RasTexApp(name, width, height, use_validation_layer) {}
     virtual ~RasSubpassApp() override;
+
 protected:
     // virtual void init_per_frame() override;
     virtual void init() override;
@@ -23,8 +25,9 @@ protected:
     // virtual void init_sync_structures() override;
     virtual void init_scenes() override = 0;
     virtual void render() override = 0;
-    // virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override;
-    // virtual void init_descriptors() override;
+    // virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout,
+    // VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override; virtual void
+    // init_descriptors() override;
 
     const VkFormat _COLOR_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
     std::vector<FrameBufferAttachment> _color_attachment{};
@@ -33,5 +36,6 @@ protected:
     VkPipelineLayout _subpass_pipeline_layout = VK_NULL_HANDLE;
 
     std::vector<VkDescriptorSetLayout> _subpass_set_layout{};
+
 private:
 };

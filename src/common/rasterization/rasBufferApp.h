@@ -4,10 +4,12 @@
 #include "../render.h"
 #include "../descriptor.h"
 
-class RasBufferApp :public RasVertexApp {
+class RasBufferApp : public RasVertexApp {
 public:
-    RasBufferApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :RasVertexApp(name, width, height, use_validation_layer) {}
+    RasBufferApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer)
+        : RasVertexApp(name, width, height, use_validation_layer) {}
     virtual ~RasBufferApp() override;
+
 protected:
     // virtual void init_per_frame() override;
     virtual void init() override;
@@ -20,7 +22,9 @@ protected:
     // virtual void init_sync_structures() override;
     virtual void init_scenes() override = 0;
     virtual void render() override = 0;
-    virtual void set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) override;
+    virtual void set_shader_input(PipelineBuilder &builder, VkPipelineLayout &layout,
+                                  VkDescriptorSetLayout *set_layout,
+                                  uint32_t set_layout_count) override;
 
     virtual void init_descriptors();
 
@@ -31,5 +35,6 @@ protected:
     Descriptor _descriptors{};
     AllocatedBuffer _uniform_data_buffer{};
     std::vector<VkDescriptorSetLayout> _set_layout{};
+
 private:
 };

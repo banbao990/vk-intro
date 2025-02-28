@@ -15,16 +15,17 @@ void RasDepthApp::draw() {
         return;
     }
 
-    FrameData& frame = get_current_frame();
+    FrameData &frame = get_current_frame();
 
     // 1. check state
     // blocked or timeout
     // wait until the GPU has finished rendering the last frame.
     // timeout of 1 second
     VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence)); // !!important!!
+    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence));  // !!important!!
 
-    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore, nullptr, &_swapchain_image_index));
+    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore,
+                                   nullptr, &_swapchain_image_index));
 
     // 2. prepare command buffer
 
@@ -33,18 +34,20 @@ void RasDepthApp::draw() {
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // We will use this command buffer exactly once
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     // 3. add commands
     VkClearValue color_value{};
-    color_value.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+    color_value.color = {0.0f, 0.0f, 0.0f, 0.0f};
     VkClearValue depth_value{};
-    depth_value.depthStencil.depth = 1.0f; // max
-    VkClearValue clear_values[2] = { color_value,depth_value };
+    depth_value.depthStencil.depth = 1.0f;  // max
+    VkClearValue clear_values[2] = {color_value, depth_value};
 
-    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(_render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
+    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(
+        _render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
 
     rp_begin_info.clearValueCount = 2;
     rp_begin_info.pClearValues = clear_values;
@@ -64,7 +67,7 @@ void RasDepthApp::draw() {
     VkSubmitInfo submit_info = vkinit::submit_info(&cmd);
 
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    submit_info.pWaitDstStageMask = &wait_stage; // TODO: complex concept
+    submit_info.pWaitDstStageMask = &wait_stage;  // TODO: complex concept
 
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &frame._present_semaphore;
@@ -128,7 +131,7 @@ void RasDepthApp::init_render_pass() {
 
     VkAttachmentReference color_attachment_ref = {};
     // attachment number will index into the pAttachments array in the parent renderpass itself
-    color_attachment_ref.attachment = 0; // index = 0
+    color_attachment_ref.attachment = 0;  // index = 0
     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     VkAttachmentReference depth_attachment_ref = {};
@@ -147,7 +150,7 @@ void RasDepthApp::init_render_pass() {
     render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
 
     // connect the color & depth attachment to the info
-    VkAttachmentDescription attachments[2] = { color_attachment, depth_attachment };
+    VkAttachmentDescription attachments[2] = {color_attachment, depth_attachment};
     render_pass_info.attachmentCount = 2;
     render_pass_info.pAttachments = &attachments[0];
 
@@ -158,17 +161,15 @@ void RasDepthApp::init_render_pass() {
     VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass));
 
     _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyRenderPass(_device, _render_pass, nullptr);
-        }
-    );
-
+        [=]() { vkDestroyRenderPass(_device, _render_pass, nullptr); });
 }
 
 void RasDepthApp::init_framebuffers() {
     const uint32_t swapchain_image_count = (uint32_t)_swapchain_images.size();
-    _depth_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);;
-    add_attchment(_depth_attachment.data(), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    _depth_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);
+    ;
+    add_attchment(_depth_attachment.data(), VK_FORMAT_D32_SFLOAT,
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
 
     // create the framebuffers for the swapchain images.
     // This will connect the render-pass to the images for rendering
@@ -179,38 +180,33 @@ void RasDepthApp::init_framebuffers() {
 
     // create framebuffers for each of the swapchain image views
     for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-        VkImageView& image_view = _swapchain_image_views[i];
+        VkImageView &image_view = _swapchain_image_views[i];
 
-        VkImageView iv[2] = { image_view, _depth_attachment[i]._image_view};
+        VkImageView iv[2] = {image_view, _depth_attachment[i]._image_view};
 
         fb_info.attachmentCount = 2;
         fb_info.pAttachments = iv;
 
-        VkFramebuffer& framebuffer = _framebuffers[i];
+        VkFramebuffer &framebuffer = _framebuffers[i];
         VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (VkFramebuffer &framebuffer: _framebuffers) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
         }
-    );
+    });
 }
 
-void RasDepthApp::add_attchment(FrameBufferAttachment* attachments, VkFormat format, VkImageUsageFlags usage_flag) {
+void RasDepthApp::add_attchment(FrameBufferAttachment *attachments, VkFormat format,
+                                VkImageUsageFlags usage_flag) {
     uint32_t swapchain_cnt = _swapchain_images.size();
 
-    VkExtent3D image_extent = {
-        _window_extent.width,
-        _window_extent.height,
-        1
-    };
+    VkExtent3D image_extent = {_window_extent.width, _window_extent.height, 1};
 
     for (int i = 0; i < swapchain_cnt; ++i) {
-        FrameBufferAttachment& attach = attachments[i];
-        AllocatedImage& image = attach._image;
+        FrameBufferAttachment &attach = attachments[i];
+        AllocatedImage &image = attach._image;
         attach._format = format;
 
         VkImageAspectFlags aspect_mask = 0;
@@ -228,21 +224,21 @@ void RasDepthApp::add_attchment(FrameBufferAttachment* attachments, VkFormat for
         // only in GPU
         alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         alloc_info.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image, &image._allocation, nullptr));
+        VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image,
+                                &image._allocation, nullptr));
 
-        VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(format, image._image, aspect_mask);
+        VkImageViewCreateInfo image_view_info =
+            vkinit::image_view_create_info(format, image._image, aspect_mask);
         VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &attach._image_view));
     }
 
-    _main_deletion_queue.push_function(
-        [=]() {
-            for (int i = 0; i < swapchain_cnt; ++i) {
-                FrameBufferAttachment& attach = attachments[i];
-                AllocatedImage& image = attach._image;
+    _main_deletion_queue.push_function([=]() {
+        for (int i = 0; i < swapchain_cnt; ++i) {
+            FrameBufferAttachment &attach = attachments[i];
+            AllocatedImage &image = attach._image;
 
-                vkDestroyImageView(_device, attach._image_view, nullptr);
-                vmaDestroyImage(_allocator, image._image, image._allocation);
-            }
+            vkDestroyImageView(_device, attach._image_view, nullptr);
+            vmaDestroyImage(_allocator, image._image, image._allocation);
         }
-    );
+    });
 }

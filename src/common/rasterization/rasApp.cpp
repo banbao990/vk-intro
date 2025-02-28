@@ -38,16 +38,17 @@ void RasApp::draw() {
         return;
     }
 
-    FrameData& frame = get_current_frame();
+    FrameData &frame = get_current_frame();
 
     // 1. check state
     // blocked or timeout
     // wait until the GPU has finished rendering the last frame.
     // timeout of 1 second
     VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence)); // !!important!!
+    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence));  // !!important!!
 
-    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore, nullptr, &_swapchain_image_index));
+    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore,
+                                   nullptr, &_swapchain_image_index));
 
     // 2. prepare command buffer
 
@@ -56,15 +57,17 @@ void RasApp::draw() {
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // We will use this command buffer exactly once
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     // 3. add commands
     VkClearValue color_value{};
-    color_value.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+    color_value.color = {0.0f, 0.0f, 0.0f, 0.0f};
 
-    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(_render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
+    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(
+        _render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
 
     rp_begin_info.clearValueCount = 1;
     rp_begin_info.pClearValues = &color_value;
@@ -84,7 +87,7 @@ void RasApp::draw() {
     VkSubmitInfo submit_info = vkinit::submit_info(&cmd);
 
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    submit_info.pWaitDstStageMask = &wait_stage; // TODO: complex concept
+    submit_info.pWaitDstStageMask = &wait_stage;  // TODO: complex concept
 
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &frame._present_semaphore;
@@ -111,15 +114,11 @@ void RasApp::draw() {
     ++_frame_number;
 }
 
-void RasApp::add_pipeline_no_input (
-    const char* vertex_shader_relative_path,
-    const char* fragment_shader_relative_path,
-    VkDescriptorSetLayout* set_layout, uint32_t set_layout_count,
-    bool use_z_buffer,
-    VkRenderPass renderpass,
-    uint32_t subpass,
-    VkPipeline& pipeline, VkPipelineLayout& layout
-) {
+void RasApp::add_pipeline_no_input(const char *vertex_shader_relative_path,
+                                   const char *fragment_shader_relative_path,
+                                   VkDescriptorSetLayout *set_layout, uint32_t set_layout_count,
+                                   bool use_z_buffer, VkRenderPass renderpass, uint32_t subpass,
+                                   VkPipeline &pipeline, VkPipelineLayout &layout) {
     // build the pipeline
     PipelineBuilder pipeline_builder;
     pipeline_builder.reset_shaders();
@@ -127,7 +126,8 @@ void RasApp::add_pipeline_no_input (
     // how to read vertex input (now no input)
     pipeline_builder._vertex_input_info = vkinit::pipeline_vertex_input_state_create_info();
     // drawing triangle lists, strips, or individual points
-    pipeline_builder._input_assembly = vkinit::pipeline_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
+    pipeline_builder._input_assembly =
+        vkinit::pipeline_input_assembly_create_info(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
     // viewport and scissor
     pipeline_builder._viewport.x = 0.0f;
@@ -137,11 +137,12 @@ void RasApp::add_pipeline_no_input (
     pipeline_builder._viewport.minDepth = 0.0f;
     pipeline_builder._viewport.maxDepth = 1.0f;
 
-    pipeline_builder._scissor.offset = { 0,0 };
+    pipeline_builder._scissor.offset = {0, 0};
     pipeline_builder._scissor.extent = _window_extent;
 
     // wireframe or solid drawing
-    pipeline_builder._rasterizer = vkinit::pipeline_rasterization_state_create_info(VK_POLYGON_MODE_FILL);
+    pipeline_builder._rasterizer =
+        vkinit::pipeline_rasterization_state_create_info(VK_POLYGON_MODE_FILL);
 
     // no MSAA
     pipeline_builder._multisampling = vkinit::pipeline_multisampling_state_create_info();
@@ -151,7 +152,8 @@ void RasApp::add_pipeline_no_input (
 
     // z-buffer
     if (use_z_buffer) {
-        pipeline_builder._depth_stencil = vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
+        pipeline_builder._depth_stencil =
+            vkinit::depth_stencil_create_info(true, true, VK_COMPARE_OP_LESS_OR_EQUAL);
     }
 
     Shader shader(_device, vertex_shader_relative_path, fragment_shader_relative_path);
@@ -164,15 +166,14 @@ void RasApp::add_pipeline_no_input (
     pipeline_builder._pipeline_layout = layout;
     pipeline = pipeline_builder.build_pipeline(_device, renderpass, use_z_buffer, subpass);
     // cleanup
-    _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyPipeline(_device, pipeline, nullptr);
-            vkDestroyPipelineLayout(_device, layout, nullptr);
-        }
-    );
+    _main_deletion_queue.push_function([=]() {
+        vkDestroyPipeline(_device, pipeline, nullptr);
+        vkDestroyPipelineLayout(_device, layout, nullptr);
+    });
 }
 
-void RasApp::set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) {
+void RasApp::set_shader_input(PipelineBuilder &builder, VkPipelineLayout &layout,
+                              VkDescriptorSetLayout *set_layout, uint32_t set_layout_count) {
     VkPipelineLayoutCreateInfo layout_create_info = vkinit::pipeline_layout_create_info();
     VK_CHECK(vkCreatePipelineLayout(_device, &layout_create_info, nullptr, &layout));
     builder._pipeline_layout = layout;
@@ -184,27 +185,26 @@ void RasApp::init_commands_for_graphics_pipeline() {
     VkCommandPoolCreateInfo cmd_pool_info = vkinit::command_pool_create_info(
         _graphics_queue_family,
         // we also want the pool to allow for resetting of individual command buffers
-        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-    );
+        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
         VK_CHECK(vkCreateCommandPool(_device, &cmd_pool_info, nullptr, &frame._command_pool));
         // Create Command Buffer
-        VkCommandBufferAllocateInfo cmd_alloc_info = vkinit::command_buffer_allocate_info(frame._command_pool);
+        VkCommandBufferAllocateInfo cmd_alloc_info =
+            vkinit::command_buffer_allocate_info(frame._command_pool);
         VK_CHECK(vkAllocateCommandBuffers(_device, &cmd_alloc_info, &frame._main_command_buffer));
     }
 
     // resources
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (int i = 0; i < FRAME_OVERLAP; ++i) {
-                FrameData& frame = _frames[i];
-                // destroying their parent pool will destroy all of the command buffers allocated from it
-                vkDestroyCommandPool(_device, frame._command_pool, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (int i = 0; i < FRAME_OVERLAP; ++i) {
+            FrameData &frame = _frames[i];
+            // destroying their parent pool will destroy all of the command buffers allocated from
+            // it
+            vkDestroyCommandPool(_device, frame._command_pool, nullptr);
         }
-    );
+    });
 }
 
 void RasApp::init_sync_structures_for_graphics_pass() {
@@ -213,23 +213,23 @@ void RasApp::init_sync_structures_for_graphics_pass() {
     // initialized with signaled state
     VkFenceCreateInfo fence_create_info = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
         VK_CHECK(vkCreateFence(_device, &fence_create_info, nullptr, &frame._render_fence));
 
         VkSemaphoreCreateInfo semaphore_create_info = vkinit::semaphore_create_info();
-        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._present_semaphore));
-        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._render_semaphore));
+        VK_CHECK(
+            vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._present_semaphore));
+        VK_CHECK(
+            vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._render_semaphore));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (FrameData& frame : _frames) {
-                vkDestroySemaphore(_device, frame._present_semaphore, nullptr);
-                vkDestroySemaphore(_device, frame._render_semaphore, nullptr);
-                vkDestroyFence(_device, frame._render_fence, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (FrameData &frame: _frames) {
+            vkDestroySemaphore(_device, frame._present_semaphore, nullptr);
+            vkDestroySemaphore(_device, frame._render_semaphore, nullptr);
+            vkDestroyFence(_device, frame._render_fence, nullptr);
         }
-    );
+    });
 }
 
 inline uint32_t RasApp::get_current_frame_idx() const {
@@ -239,7 +239,7 @@ inline uint32_t RasApp::get_current_frame_idx() const {
 void RasApp::basic_clean_up() {
     if (_is_initialized) {
         for (int i = 0; i < FRAME_OVERLAP; ++i) {
-            FrameData& frame = _frames[i];
+            FrameData &frame = _frames[i];
             VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
         }
         VK_CHECK(vkDeviceWaitIdle(_device));
@@ -248,7 +248,7 @@ void RasApp::basic_clean_up() {
     }
 }
 
-FrameData& RasApp::get_current_frame() {
+FrameData &RasApp::get_current_frame() {
     return _frames[get_current_frame_idx()];
 }
 
@@ -281,7 +281,7 @@ void RasApp::init_render_pass() {
     // 2. Add subpass
     VkAttachmentReference color_attachment_ref = {};
     // attachment number will index into the pAttachments array in the parent renderpass itself
-    color_attachment_ref.attachment = 0; // index = 0
+    color_attachment_ref.attachment = 0;  // index = 0
     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     // 1 subpass
@@ -305,10 +305,7 @@ void RasApp::init_render_pass() {
     VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass));
 
     _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyRenderPass(_device, _render_pass, nullptr);
-        }
-    );
+        [=]() { vkDestroyRenderPass(_device, _render_pass, nullptr); });
 }
 
 void RasApp::init_framebuffers() {
@@ -322,20 +319,18 @@ void RasApp::init_framebuffers() {
 
     // create framebuffers for each of the swapchain image views
     for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-        VkImageView& image_view = _swapchain_image_views[i];
+        VkImageView &image_view = _swapchain_image_views[i];
         fb_info.pAttachments = &image_view;
         fb_info.attachmentCount = 1;
-        VkFramebuffer& framebuffer = _framebuffers[i];
+        VkFramebuffer &framebuffer = _framebuffers[i];
         VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (VkFramebuffer &framebuffer: _framebuffers) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
         }
-    );
+    });
 }
 
 void RasApp::init_sync_structures() {

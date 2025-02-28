@@ -6,7 +6,9 @@
 #include <vector>
 #include <string>
 
-Shader::Shader(VkDevice device, const char* vertex_relative_path, const char* fragment_relative_path) :_device(device) {
+Shader::Shader(VkDevice device, const char *vertex_relative_path,
+               const char *fragment_relative_path)
+    : _device(device) {
     if (vertex_relative_path) {
         _vertex_shader = load_shader_module(device, vertex_relative_path);
     }
@@ -28,10 +30,10 @@ VkShaderModule Shader::fragment() const {
     return _fragment_shader;
 }
 
-VkShaderModule Shader::load_shader_module(VkDevice device, const char* file_relative_path) {
+VkShaderModule Shader::load_shader_module(VkDevice device, const char *file_relative_path) {
     // 1. open the file
     // ate: with the cursor at the end
-    std::string file_path = std::string(SHADER_DIRECTORY"/") + file_relative_path;
+    std::string file_path = std::string(SHADER_DIRECTORY "/") + file_relative_path;
     std::ifstream file(file_path, std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
         std::cerr << "[Shader Loading] Shader file not found: " << file_path << std::endl;
@@ -45,7 +47,7 @@ VkShaderModule Shader::load_shader_module(VkDevice device, const char* file_rela
     std::vector<uint32_t> buffer((file_size + sizeof(uint32_t) - 1) / sizeof(uint32_t));
     // set the curse at the beginning
     file.seekg(0);
-    file.read((char*)buffer.data(), file_size);
+    file.read((char *)buffer.data(), file_size);
     file.close();
 
     // 3. load to the vulkan

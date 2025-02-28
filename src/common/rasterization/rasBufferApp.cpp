@@ -10,8 +10,8 @@ RasBufferApp::~RasBufferApp() {
 
 void RasBufferApp::init() {
     {
-        VkPhysicalDeviceShaderDrawParametersFeatures features
-            = vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
+        VkPhysicalDeviceShaderDrawParametersFeatures features =
+            vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
         init_vulkan(&features);
     }
 
@@ -35,7 +35,8 @@ void RasBufferApp::init() {
     _is_initialized = true;
 }
 
-void RasBufferApp::set_shader_input(PipelineBuilder& builder, VkPipelineLayout& layout, VkDescriptorSetLayout* set_layout, uint32_t set_layout_count) {
+void RasBufferApp::set_shader_input(PipelineBuilder &builder, VkPipelineLayout &layout,
+                                    VkDescriptorSetLayout *set_layout, uint32_t set_layout_count) {
     VkPipelineLayoutCreateInfo layout_create_info = vkinit::pipeline_layout_create_info();
 
     // discriptor set
@@ -49,8 +50,8 @@ void RasBufferApp::set_shader_input(PipelineBuilder& builder, VkPipelineLayout& 
 
 void RasBufferApp::init_descriptors() {
     std::cerr << "You should implement the init_descriptor() funciton "
-        "as this is just a sample code(size = 0 will error)"
-        << std::endl;
+                 "as this is just a sample code(size = 0 will error)"
+              << std::endl;
     _descriptors.init_pool(_device);
 
     // [1] uniform data
@@ -72,12 +73,14 @@ void RasBufferApp::init_descriptors_for_uniform_data(uint32_t buffer_size) {
     VkDescriptorSetLayout unifrom_data_set_layout = _descriptors.create_set_layout(&type, &stage);
 
     // allocate buffers
-    const uint32_t padding_buffer_size = vkutils::padding(buffer_size, _physical_device_properties.limits.minUniformBufferOffsetAlignment);
+    const uint32_t padding_buffer_size = vkutils::padding(
+        buffer_size, _physical_device_properties.limits.minUniformBufferOffsetAlignment);
     const uint32_t total_buffer_size = padding_buffer_size * FRAME_OVERLAP;
-    _uniform_data_buffer = create_buffer(total_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    _uniform_data_buffer = create_buffer(total_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                         VMA_MEMORY_USAGE_CPU_TO_GPU);
 
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
 
         // allcote the descriptor set (uniform data)
         frame._uniform_data_descriptor_set = _descriptors.create_set(unifrom_data_set_layout);
@@ -85,7 +88,7 @@ void RasBufferApp::init_descriptors_for_uniform_data(uint32_t buffer_size) {
         // point to the buffers, allocate the buffers
         VkDescriptorBufferInfo uniform_buffer_info = {};
         uniform_buffer_info.buffer = _uniform_data_buffer._buffer;
-        uniform_buffer_info.offset = 0; // dynamic
+        uniform_buffer_info.offset = 0;  // dynamic
         uniform_buffer_info.range = buffer_size;
 
         _descriptors.bind(frame._uniform_data_descriptor_set, &uniform_buffer_info, type, 0);
@@ -93,11 +96,10 @@ void RasBufferApp::init_descriptors_for_uniform_data(uint32_t buffer_size) {
 
     _set_layout.push_back(unifrom_data_set_layout);
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            vmaDestroyBuffer(_allocator, _uniform_data_buffer._buffer, _uniform_data_buffer._allocation);
-        }
-    );
+    _main_deletion_queue.push_function([&]() {
+        vmaDestroyBuffer(_allocator, _uniform_data_buffer._buffer,
+                         _uniform_data_buffer._allocation);
+    });
 }
 
 void RasBufferApp::init_descriptors_for_object_data(uint32_t size_per_object) {
@@ -106,15 +108,13 @@ void RasBufferApp::init_descriptors_for_object_data(uint32_t size_per_object) {
     VkDescriptorSetLayout object_set_layout = _descriptors.create_set_layout(&type, &stage);
 
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
 
         // allocate buffers
         const int MAX_OBJECTS = 10'000;
-        frame._object_buffer = create_buffer(
-            size_per_object * MAX_OBJECTS,
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-            VMA_MEMORY_USAGE_CPU_TO_GPU
-        );
+        frame._object_buffer =
+            create_buffer(size_per_object * MAX_OBJECTS, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                          VMA_MEMORY_USAGE_CPU_TO_GPU);
 
         // allcote the descriptor set (object data)
         frame._object_descriptor_set = _descriptors.create_set(object_set_layout);
@@ -129,12 +129,11 @@ void RasBufferApp::init_descriptors_for_object_data(uint32_t size_per_object) {
 
     _set_layout.push_back(object_set_layout);
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (int i = 0; i < FRAME_OVERLAP; i++) {
-                FrameData& frame = _frames[i];
-                vmaDestroyBuffer(_allocator, frame._object_buffer._buffer, frame._object_buffer._allocation);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (int i = 0; i < FRAME_OVERLAP; i++) {
+            FrameData &frame = _frames[i];
+            vmaDestroyBuffer(_allocator, frame._object_buffer._buffer,
+                             frame._object_buffer._allocation);
         }
-    );
+    });
 }

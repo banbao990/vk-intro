@@ -8,8 +8,8 @@ struct FrameData {
     VkFence _render_fence = VK_NULL_HANDLE;
 
     // command
-    VkCommandPool _command_pool = VK_NULL_HANDLE;          // the command pool for our commands
-    VkCommandBuffer _main_command_buffer = VK_NULL_HANDLE; // the buffer we will record into
+    VkCommandPool _command_pool = VK_NULL_HANDLE;           // the command pool for our commands
+    VkCommandBuffer _main_command_buffer = VK_NULL_HANDLE;  // the buffer we will record into
 
     // descriptors
     // gather all uniform variables in different frames into one buffer (fixed size)
@@ -18,4 +18,3 @@ struct FrameData {
     VkDescriptorSet _object_descriptor_set = VK_NULL_HANDLE;
     AllocatedBuffer _object_buffer{};
 };
-

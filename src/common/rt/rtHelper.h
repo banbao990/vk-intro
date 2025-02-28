@@ -3,47 +3,47 @@
 #include <vector>
 
 struct RTAccelerationStructure {
-    AllocatedBuffer                         _buffer;
-    VkAccelerationStructureKHR              _acceleration_structure;
-    VkDeviceAddress                         _handle;
+    AllocatedBuffer _buffer;
+    VkAccelerationStructureKHR _acceleration_structure;
+    VkDeviceAddress _handle;
 };
 
 struct RTMesh {
-    uint32_t                    _num_vertices;
-    uint32_t                    _num_faces;
+    uint32_t _num_vertices;
+    uint32_t _num_faces;
 
-    AllocatedBuffer             _positions;
-    AllocatedBuffer             _attribs;
-    AllocatedBuffer             _indices;
-    AllocatedBuffer             _faces;
-    AllocatedBuffer             _mat_IDs;
+    AllocatedBuffer _positions;
+    AllocatedBuffer _attribs;
+    AllocatedBuffer _indices;
+    AllocatedBuffer _faces;
+    AllocatedBuffer _mat_IDs;
 
-    RTAccelerationStructure     _blas;
+    RTAccelerationStructure _blas;
 };
 
 struct RTMaterial {
-    VkFormat            _format;
-    VkImageView         _image_view;
-    VkSampler           _sampler;
-    AllocatedImage      _texture;
+    VkFormat _format;
+    VkImageView _image_view;
+    VkSampler _sampler;
+    AllocatedImage _texture;
 };
 
 // forward declaration
 class RTApp;
 
 struct RTScene {
-    std::vector<RTMesh>             _meshes;
-    std::vector<RTMaterial>         _materials;
-    RTAccelerationStructure         _tlas;
+    std::vector<RTMesh> _meshes;
+    std::vector<RTMaterial> _materials;
+    RTAccelerationStructure _tlas;
 
     // shader resources stuff
-    std::vector<VkDescriptorBufferInfo>   _mat_IDs_buffer_infos;
-    std::vector<VkDescriptorBufferInfo>   _attribs_buffer_infos;
-    std::vector<VkDescriptorBufferInfo>   _faces_buffer_infos;
-    std::vector<VkDescriptorImageInfo>    _textures_infos;
+    std::vector<VkDescriptorBufferInfo> _mat_IDs_buffer_infos;
+    std::vector<VkDescriptorBufferInfo> _attribs_buffer_infos;
+    std::vector<VkDescriptorBufferInfo> _faces_buffer_infos;
+    std::vector<VkDescriptorImageInfo> _textures_infos;
 
-    void build_blas(VkDevice device, VmaAllocator allocator, RTApp* app);
-    void build_tlas(VkDevice device, VmaAllocator allocator, RTApp* app);
+    void build_blas(VkDevice device, VmaAllocator allocator, RTApp *app);
+    void build_tlas(VkDevice device, VmaAllocator allocator, RTApp *app);
 };
 
 // single instance
@@ -54,7 +54,7 @@ private:
     ~LoaderManager();
 
 public:
-    static LoaderManager* get_instance();
+    static LoaderManager *get_instance();
     void init_extension_addr(const VkDevice device);
 
     // loader
@@ -71,18 +71,16 @@ public:
 
 namespace rt_utils {
 
-    void init_extension_addr(const VkDevice _device);
+void init_extension_addr(const VkDevice _device);
 
-    [[nodiscard]]
-    AllocatedBuffer create_buffer(const VmaAllocator& allocator, const uint32_t alloc_size, VkBufferUsageFlags usage, VmaMemoryUsage memory_usage);
+[[nodiscard]] AllocatedBuffer create_buffer(const VmaAllocator &allocator,
+                                            const uint32_t alloc_size, VkBufferUsageFlags usage,
+                                            VmaMemoryUsage memory_usage);
 
-    VkDeviceOrHostAddressKHR get_buffer_device_address(const VkDevice& device, const VkBuffer& buffer);
-    VkDeviceOrHostAddressConstKHR get_buffer_device_address_const(const VkDevice& device, const VkBuffer& buffer);
-    void image_barrier(VkCommandBuffer cmd,
-        VkImage image,
-        VkImageSubresourceRange& subresource_range,
-        VkAccessFlags src_access_mask,
-        VkAccessFlags dst_access_mask,
-        VkImageLayout old_layout,
-        VkImageLayout new_layout);
-}
+VkDeviceOrHostAddressKHR get_buffer_device_address(const VkDevice &device, const VkBuffer &buffer);
+VkDeviceOrHostAddressConstKHR get_buffer_device_address_const(const VkDevice &device,
+                                                              const VkBuffer &buffer);
+void image_barrier(VkCommandBuffer cmd, VkImage image, VkImageSubresourceRange &subresource_range,
+                   VkAccessFlags src_access_mask, VkAccessFlags dst_access_mask,
+                   VkImageLayout old_layout, VkImageLayout new_layout);
+}  // namespace rt_utils

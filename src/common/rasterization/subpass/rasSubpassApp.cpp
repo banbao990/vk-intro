@@ -12,8 +12,8 @@ RasSubpassApp::~RasSubpassApp() {
 
 void RasSubpassApp::init() {
     {
-        VkPhysicalDeviceShaderDrawParametersFeatures features
-            = vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
+        VkPhysicalDeviceShaderDrawParametersFeatures features =
+            vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
         init_vulkan(&features);
     }
 
@@ -45,16 +45,17 @@ void RasSubpassApp::draw() {
         return;
     }
 
-    FrameData& frame = get_current_frame();
+    FrameData &frame = get_current_frame();
 
     // 1. check state
     // blocked or timeout
     // wait until the GPU has finished rendering the last frame.
     // timeout of 1 second
     VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence)); // !!important!!
+    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence));  // !!important!!
 
-    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore, nullptr, &_swapchain_image_index));
+    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore,
+                                   nullptr, &_swapchain_image_index));
 
     // 2. prepare command buffer
 
@@ -63,18 +64,20 @@ void RasSubpassApp::draw() {
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // We will use this command buffer exactly once
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     // 3. add commands
     VkClearValue color_value{};
-    color_value.color = { 0.0f, 0.0f, 0.0f, 0.0f };
+    color_value.color = {0.0f, 0.0f, 0.0f, 0.0f};
     VkClearValue depth_value{};
-    depth_value.depthStencil.depth = 1.0f; // max
-    VkClearValue clear_values[3] = { color_value, depth_value, color_value };
+    depth_value.depthStencil.depth = 1.0f;  // max
+    VkClearValue clear_values[3] = {color_value, depth_value, color_value};
 
-    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(_render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
+    VkRenderPassBeginInfo rp_begin_info = vkinit::renderpass_begin_info(
+        _render_pass, _window_extent, _framebuffers[_swapchain_image_index]);
 
     rp_begin_info.clearValueCount = 3;
     rp_begin_info.pClearValues = clear_values;
@@ -94,7 +97,7 @@ void RasSubpassApp::draw() {
     VkSubmitInfo submit_info = vkinit::submit_info(&cmd);
 
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    submit_info.pWaitDstStageMask = &wait_stage; // TODO: complex concept
+    submit_info.pWaitDstStageMask = &wait_stage;  // TODO: complex concept
 
     submit_info.waitSemaphoreCount = 1;
     submit_info.pWaitSemaphores = &frame._present_semaphore;
@@ -127,7 +130,8 @@ void RasSubpassApp::init_render_pass() {
     color_attachment.format = _COLOR_FORMAT;
     color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE; // subpass optimize, may not VK_ATTACHMENT_STORE_OP_STORE
+    color_attachment.storeOp =
+        VK_ATTACHMENT_STORE_OP_DONT_CARE;  // subpass optimize, may not VK_ATTACHMENT_STORE_OP_STORE
     color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -137,8 +141,10 @@ void RasSubpassApp::init_render_pass() {
     depth_attachment.format = _DEPTH_FORMAT;
     depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
     depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;  // subpass optimize, may not VK_ATTACHMENT_STORE_OP_STORE
-    depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // do not use, VK_ATTACHMENT_STORE_OP_DONT_CARE is ok
+    depth_attachment.storeOp =
+        VK_ATTACHMENT_STORE_OP_DONT_CARE;  // subpass optimize, may not VK_ATTACHMENT_STORE_OP_STORE
+    depth_attachment.stencilLoadOp =
+        VK_ATTACHMENT_LOAD_OP_CLEAR;  // do not use, VK_ATTACHMENT_STORE_OP_DONT_CARE is ok
     depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -180,7 +186,7 @@ void RasSubpassApp::init_render_pass() {
     input_attachment_color.layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     VkAttachmentReference input_attachment_depth = input_attachment_color;
     input_attachment_depth.attachment = 1;
-    VkAttachmentReference input_attachments[2] = { input_attachment_color , input_attachment_depth };
+    VkAttachmentReference input_attachments[2] = {input_attachment_color, input_attachment_depth};
 
     subpass1.inputAttachmentCount = 2;
     subpass1.pInputAttachments = input_attachments;
@@ -191,10 +197,13 @@ void RasSubpassApp::init_render_pass() {
     dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[0].dstSubpass = 0;
     dependencies[0].srcStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[0].dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
+    dependencies[0].dstStageMask =
+        VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT;
     dependencies[0].srcAccessMask = VK_ACCESS_MEMORY_READ_BIT;
-    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT; // subpass input_attachment
+    dependencies[0].dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                                    VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                    VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    dependencies[0].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;  // subpass input_attachment
 
     // This dependency transitions the input attachment from color attachment to shader read
     dependencies[1].srcSubpass = 0;
@@ -209,7 +218,8 @@ void RasSubpassApp::init_render_pass() {
     dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
     dependencies[2].srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependencies[2].dstStageMask = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-    dependencies[2].srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependencies[2].srcAccessMask =
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
     dependencies[2].dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
     dependencies[2].dependencyFlags = VK_DEPENDENCY_BY_REGION_BIT;
 
@@ -222,31 +232,32 @@ void RasSubpassApp::init_render_pass() {
 
     // connect the color & depth attachment to the info
     // !!! the sequence are ordered !!!
-    VkAttachmentDescription attachments[3] = { color_attachment, depth_attachment, swap_color_attachment };
+    VkAttachmentDescription attachments[3] = {color_attachment, depth_attachment,
+                                              swap_color_attachment};
     render_pass_info.attachmentCount = 3;
     render_pass_info.pAttachments = attachments;
 
     // connect the subpass to the info
-    VkSubpassDescription subpasses[2] = { subpass0, subpass1 };
+    VkSubpassDescription subpasses[2] = {subpass0, subpass1};
     render_pass_info.subpassCount = 2;
     render_pass_info.pSubpasses = subpasses;
 
     VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass));
 
     _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyRenderPass(_device, _render_pass, nullptr);
-        }
-    );
+        [=]() { vkDestroyRenderPass(_device, _render_pass, nullptr); });
 }
 
 void RasSubpassApp::init_framebuffers() {
     const uint32_t swapchain_image_count = (uint32_t)_swapchain_images.size();
     _depth_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);
     // VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT flag is required for input attachments
-    add_attchment(_depth_attachment.data(), _DEPTH_FORMAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    add_attchment(_depth_attachment.data(), _DEPTH_FORMAT,
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+                      VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     _color_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);
-    add_attchment(_color_attachment.data(), _COLOR_FORMAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+    add_attchment(_color_attachment.data(), _COLOR_FORMAT,
+                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
 
     // create the framebuffers for the swapchain images.
     // This will connect the render-pass to the images for rendering
@@ -257,26 +268,21 @@ void RasSubpassApp::init_framebuffers() {
 
     // create framebuffers for each of the swapchain image views
     for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-        VkImageView& swap_chain_image_view = _swapchain_image_views[i];
+        VkImageView &swap_chain_image_view = _swapchain_image_views[i];
 
-        VkImageView image_views[3] = {
-            _color_attachment[i]._image_view,
-            _depth_attachment[i]._image_view,
-            swap_chain_image_view
-        };
+        VkImageView image_views[3] = {_color_attachment[i]._image_view,
+                                      _depth_attachment[i]._image_view, swap_chain_image_view};
 
         fb_info.attachmentCount = 3;
         fb_info.pAttachments = image_views;
 
-        VkFramebuffer& framebuffer = _framebuffers[i];
+        VkFramebuffer &framebuffer = _framebuffers[i];
         VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (VkFramebuffer &framebuffer: _framebuffers) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
         }
-    );
+    });
 }

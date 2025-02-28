@@ -35,17 +35,20 @@ float luminance(in vec3 color) {
     return dot(color, vec3(0.212671f, 0.715160f, 0.072169f));
 }
 
-void eval_dm_dot_gm(out float dm_dot_gm, in float anisotropic, in float roughness, in vec3 in_l, in vec3 h_l, in vec3 out_l) {
+void eval_dm_dot_gm(out float dm_dot_gm, in float anisotropic, in float roughness, in vec3 in_l,
+                    in vec3 h_l, in vec3 out_l) {
     // [2.2] Normal distribution function
     // anisotropic Trowbridge-Reitz distribution (GGX: Ground Glass X)
     const float aspect = sqrt(1 - 0.9f * anisotropic);
     const float roughness_2 = roughness * roughness;
     float alpha_x = max(METAL_ALPHA_MIN, roughness_2 / aspect);
     float alpha_y = max(METAL_ALPHA_MIN, roughness_2 * aspect);
-    // float dm_sub_denominator = h_l[0] * h_l[0] / (alpha_x * alpha_x) + h_l[1] * h_l[1] / (alpha_y * alpha_y) + h_l[2] * h_l[2];
+    // float dm_sub_denominator = h_l[0] * h_l[0] / (alpha_x * alpha_x) + h_l[1] * h_l[1] / (alpha_y
+    // * alpha_y) + h_l[2] * h_l[2];
     vec3 t_sub = h_l / vec3(alpha_x, alpha_y, 1.0f);
     float dm_sub_denominator = dot(t_sub, t_sub);
-    float dm = 1.0f / max(DISNEY_EPS, (BB_PI * alpha_x * alpha_y * dm_sub_denominator * dm_sub_denominator));
+    float dm = 1.0f / max(DISNEY_EPS,
+                          (BB_PI * alpha_x * alpha_y * dm_sub_denominator * dm_sub_denominator));
 
     // [2.3] Geometric shadowing function
     // Smith's method
@@ -55,16 +58,14 @@ void eval_dm_dot_gm(out float dm_dot_gm, in float anisotropic, in float roughnes
 }
 
 // bsdf = BSDF * cos
-void eval_disney(in Disney disney,
-    in vec3 normal, in vec3 direction_out, in vec3 direction_in,
-    out vec3 bsdf
-) {
+void eval_disney(in Disney disney, in vec3 normal, in vec3 direction_out, in vec3 direction_in,
+                 out vec3 bsdf) {
     mat3 local2world;
     const vec3 a = (abs(normal[0]) > 0.9f) ? vec3(0.0f, 1.0f, 0.0f) : vec3(1.0f, 0.0f, 0.0f);
-    local2world[2] = normal; // local's z-axis is normal (description in world frame)
+    local2world[2] = normal;  // local's z-axis is normal (description in world frame)
     local2world[1] = normalize(cross(normal, a));
-    local2world[0] = normalize(cross(normal, local2world[1])); // left hand
-    local2world = transpose(local2world); // col majar, so we need transpose
+    local2world[0] = normalize(cross(normal, local2world[1]));  // left hand
+    local2world = transpose(local2world);                       // col majar, so we need transpose
 
     vec3 in_l = normalize(local2world * direction_in);
     vec3 out_l = normalize(local2world * direction_out);
@@ -91,19 +92,19 @@ void eval_disney(in Disney disney,
 
     float h_dot_o = dot(h_l, out_l);
     float h_dot_o_a = clamp(abs(h_dot_o), 0, 1.0f);
-    //float h_dot_o_a = max(DISNEY_EPS, abs(h_dot_o));
-    //h_dot_o = sign(h_dot_o) * h_dot_o_a;
+    // float h_dot_o_a = max(DISNEY_EPS, abs(h_dot_o));
+    // h_dot_o = sign(h_dot_o) * h_dot_o_a;
     float h_dot_o_2 = h_dot_o_a * h_dot_o_a;
 
     float n_dot_o = dot(n_l, out_l);
     float n_dot_o_a = clamp(abs(n_dot_o), 0, 1.0f);
-    //float n_dot_o_a = max(DISNEY_EPS, abs(n_dot_o));
-    //n_dot_o = sign(n_dot_o) * n_dot_o_a;
+    // float n_dot_o_a = max(DISNEY_EPS, abs(n_dot_o));
+    // n_dot_o = sign(n_dot_o) * n_dot_o_a;
 
     float n_dot_i = dot(n_l, in_l);
     float n_dot_i_a = clamp(abs(n_dot_i), 0, 1.0f);
-    //float n_dot_i_a = max(DISNEY_EPS, abs(n_dot_i));
-    //n_dot_i = sign(n_dot_i) * n_dot_i_a;
+    // float n_dot_i_a = max(DISNEY_EPS, abs(n_dot_i));
+    // n_dot_i = sign(n_dot_i) * n_dot_i_a;
 
     const bool is_outgoing = (n_dot_i < 0) || (n_dot_o < 0);
     vec3 diffuse = vec3(0);
@@ -121,11 +122,12 @@ void eval_disney(in Disney disney,
         float fss90 = disney._roughness * h_dot_o_2;
         float fss_o = fd(n_dot_o_a, fss90);
         float fss_i = fd(n_dot_i_a, fss90);
-        float subsurface_factor = 1.25f * (0.5f + fss_o * fss_i * (1.0f / (n_dot_i_a + n_dot_o_a) - 0.5f));
+        float subsurface_factor =
+            1.25f * (0.5f + fss_o * fss_i * (1.0f / (n_dot_i_a + n_dot_o_a) - 0.5f));
 
-        float diffuse_factor = (1 - disney._subsurface) * base_diffuse_factor
-            + disney._subsurface * subsurface_factor;
-        diffuse_factor *= n_dot_o * BB_PI_INV; // n_dot_o: cos
+        float diffuse_factor =
+            (1 - disney._subsurface) * base_diffuse_factor + disney._subsurface * subsurface_factor;
+        diffuse_factor *= n_dot_o * BB_PI_INV;  // n_dot_o: cos
         diffuse = diffuse_factor * disney._base_color;
     }
 
@@ -138,23 +140,26 @@ void eval_disney(in Disney disney,
         //  note: The cosine term in the denominator cancels out with the cosine.(BSDF * cos)
 
         // [2.1] Fresnel term
-        //vec3 fm = pow(1 - h_dot_o_a, 5) * (1.0f - disney._base_color) + disney._base_color;
+        // vec3 fm = pow(1 - h_dot_o_a, 5) * (1.0f - disney._base_color) + disney._base_color;
 
         // modified for the whole BSDF
         // const vec3 c_specular = vec3(1.0f, 1.0f, 1.0f);
         // vec3 ks = (1 - disney._specular_tint) + disney._specular_tint * c_specular;
-        // vec3 c0 = disney._specular * R0(disney._eta) * (1 - disney._metallic) * ks + disney._metallic * disney._base_color;
-        // vec3 fm_hat = pow(1 - h_dot_o_a, 5) * (1.0f - c0) + c0;
+        // vec3 c0 = disney._specular * R0(disney._eta) * (1 - disney._metallic) * ks +
+        // disney._metallic * disney._base_color; vec3 fm_hat = pow(1 - h_dot_o_a, 5) * (1.0f - c0)
+        // + c0;
         float fm1 = pow(1 - h_dot_o_a, 5);
         float r0 = R0(disney._eta);
         float fm2 = r0 + (1 - r0) * fm1;
         float fm_hat_factor = (1 - disney._metallic) * fm2 + disney._metallic * fm1;
-        // vec3 fm_hat = fm_hat_factor * vec3(1.0f, 1.0f, 1.0f) + (1 - fm_factor) * disney._base_color;
-        vec3 fm_hat = disney._base_color - fm_hat_factor * (vec3(1.0f, 1.0f, 1.0f) - disney._base_color);
+        // vec3 fm_hat = fm_hat_factor * vec3(1.0f, 1.0f, 1.0f) + (1 - fm_factor) *
+        // disney._base_color;
+        vec3 fm_hat =
+            disney._base_color - fm_hat_factor * (vec3(1.0f, 1.0f, 1.0f) - disney._base_color);
 
         // [2.2 & 2.3]
         eval_dm_dot_gm(dm_dot_gm, disney._anisotropic, disney._roughness, in_l, h_l, out_l);
-        metal = (0.25f * dm_dot_gm / max(n_dot_i_a, DISNEY_EPS)) * fm_hat;// *fm;
+        metal = (0.25f * dm_dot_gm / max(n_dot_i_a, DISNEY_EPS)) * fm_hat;  // *fm;
     }
 
     // [3] Closecoat
@@ -167,7 +172,8 @@ void eval_disney(in Disney disney,
 
         float alpha_g = (1 - disney._clearcoat_gloss) * 0.1f + disney._clearcoat_gloss * 0.001f;
         float alpha_g_2 = alpha_g * alpha_g;
-        float dc = (alpha_g_2 - 1) / (BB_PI * log(alpha_g_2) * (1 + (alpha_g_2 - 1) * h_l[2] * h_l[2]));
+        float dc =
+            (alpha_g_2 - 1) / (BB_PI * log(alpha_g_2) * (1 + (alpha_g_2 - 1) * h_l[2] * h_l[2]));
         // float gc = G(in_l, 0.25f, 0.25f) * G(out_l, 0.25f, 0.25f);
         float gc = smith_GGX(in_l[2], 0.25f) * smith_GGX(out_l[2], 0.25f);
 
@@ -182,10 +188,12 @@ void eval_disney(in Disney disney,
         float fg = 1.0f;
         if (disney._eta * disney._eta + n_dot_i * n_dot_i >= 1) {
             // not total reflection
-            float rs = (h_dot_i - disney._eta * h_dot_o) / max(h_dot_i + disney._eta * h_dot_o, DISNEY_EPS);
-            float rp = (disney._eta * h_dot_i - h_dot_o) / max(disney._eta * h_dot_i + h_dot_o, DISNEY_EPS);
+            float rs = (h_dot_i - disney._eta * h_dot_o) /
+                       max(h_dot_i + disney._eta * h_dot_o, DISNEY_EPS);
+            float rp = (disney._eta * h_dot_i - h_dot_o) /
+                       max(disney._eta * h_dot_i + h_dot_o, DISNEY_EPS);
             fg = 0.5f * (rs * rs + rp * rp);
-            //fg = clamp(fg, 0.0f, 1.0f); // too large?
+            // fg = clamp(fg, 0.0f, 1.0f); // too large?
         }
 
         if (dm_dot_gm == 0) {
@@ -198,7 +206,8 @@ void eval_disney(in Disney disney,
             // refraction
             float gf_sub_dominantor = h_dot_i + disney._eta * h_dot_o;
             gf_sub_dominantor *= gf_sub_dominantor;
-            glass = ((1 - fg) * dm_dot_gm / max(n_dot_i_a * gf_sub_dominantor, DISNEY_EPS)) * sqrt(disney._base_color);
+            glass = ((1 - fg) * dm_dot_gm / max(n_dot_i_a * gf_sub_dominantor, DISNEY_EPS)) *
+                    sqrt(disney._base_color);
         }
     }
 
@@ -206,23 +215,25 @@ void eval_disney(in Disney disney,
     vec3 sheen = vec3(0);
     if (!is_outgoing) {
         float s_lu = luminance(disney._base_color);
-        float sheen_factor = pow(1 - h_dot_o_a, 5) * n_dot_o_a; // n_dot_o_a: |cos|
+        float sheen_factor = pow(1 - h_dot_o_a, 5) * n_dot_o_a;  // n_dot_o_a: |cos|
         // if (s_lu > 0) {
         // sheen = disney._base_color / s_lu; // assert(s_lu > 0)
         // } else {
         //     sheen = vec3(1.0f, 1.0f, 1.0f);
         // }
-        sheen = sheen_factor * ((1 - disney._sheen_tint) + ((disney._sheen_tint / s_lu) * disney._base_color)); // the last item is the `if clause` above
+        sheen = sheen_factor * ((1 - disney._sheen_tint) +
+                                ((disney._sheen_tint / s_lu) *
+                                 disney._base_color));  // the last item is the `if clause` above
     }
-    bsdf = disney._metallic * metal + (1 - disney._metallic) * diffuse; // TODO
-    //bsdf = clearcoat_factor * disney._base_color;
-    //bsdf = glass;
-    //bsdf = sheen;
-    //bsdf = (1 - disney._specular_transmission) * (1 - disney._metallic) * diffuse
-    //    + (1 - disney._metallic) * disney._sheen * sheen
-    //    + (1 - disney._specular_transmission * (1 - disney._metallic)) * metal
-    //    + 0.25f * disney._clearcoat * clearcoat_factor * disney._base_color;
-        //+ (1 - disney._metallic) * disney._specular_transmission * glass;
+    bsdf = disney._metallic * metal + (1 - disney._metallic) * diffuse;  // TODO
+                                                                         // bsdf = clearcoat_factor * disney._base_color;
+                                                                         // bsdf = glass;
+                                                                         // bsdf = sheen;
+                                                                         // bsdf = (1 - disney._specular_transmission) * (1 - disney._metallic) * diffuse
+                                                                         //     + (1 - disney._metallic) * disney._sheen * sheen
+                                                                         //     + (1 - disney._specular_transmission * (1 - disney._metallic)) * metal
+                                                                         //     + 0.25f * disney._clearcoat * clearcoat_factor * disney._base_color;
+                                                                         //+ (1 - disney._metallic) * disney._specular_transmission * glass;
 }
 
 #endif

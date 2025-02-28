@@ -4,7 +4,8 @@
 
 class ModelViewerCamera {
 public:
-    ModelViewerCamera(float field_of_view, float pitch, float yaw, float focus_height, float distance);
+    ModelViewerCamera(float field_of_view, float pitch, float yaw, float focus_height,
+                      float distance);
     void draw_ui();
 
     glm::mat4 view() const;

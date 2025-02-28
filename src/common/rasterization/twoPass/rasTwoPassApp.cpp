@@ -1,7 +1,6 @@
 #include "rasTwoPassApp.h"
 #include "../../initializers.h"
 
-
 RasTwoPassApp::~RasTwoPassApp() {
     // must do it!
     // the resources of this derived class may be freed when the base class call it
@@ -10,8 +9,8 @@ RasTwoPassApp::~RasTwoPassApp() {
 
 void RasTwoPassApp::init() {
     {
-        VkPhysicalDeviceShaderDrawParametersFeatures features
-            = vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
+        VkPhysicalDeviceShaderDrawParametersFeatures features =
+            vkinit::physical_device_shader_draw_parameters_features(VK_TRUE);
         init_vulkan(&features);
     }
 
@@ -43,16 +42,17 @@ void RasTwoPassApp::draw() {
         return;
     }
 
-    FrameData& frame = get_current_frame();
+    FrameData &frame = get_current_frame();
 
     // 1. check state
     // blocked or timeout
     // wait until the GPU has finished rendering the last frame.
     // timeout of 1 second
     VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence)); // !!important!!
+    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence));  // !!important!!
 
-    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore, nullptr, &_swapchain_image_index));
+    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore,
+                                   nullptr, &_swapchain_image_index));
 
     // 2. prepare command buffer
 
@@ -61,7 +61,8 @@ void RasTwoPassApp::draw() {
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // We will use this command buffer exactly once
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
@@ -108,7 +109,7 @@ void RasTwoPassApp::init_render_pass() {
         color_attachment.format = _COLOR_FORMAT;
         color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
         color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // save it
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;  // save it
         color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -119,7 +120,8 @@ void RasTwoPassApp::init_render_pass() {
         depth_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
         depth_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
         depth_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;  // save it
-        depth_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR; // do not use, VK_ATTACHMENT_STORE_OP_DONT_CARE is ok
+        depth_attachment.stencilLoadOp =
+            VK_ATTACHMENT_LOAD_OP_CLEAR;  // do not use, VK_ATTACHMENT_STORE_OP_DONT_CARE is ok
         depth_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         depth_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
         depth_attachment.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
@@ -146,7 +148,7 @@ void RasTwoPassApp::init_render_pass() {
 
         // connect the color & depth attachment to the info
         // !!! the sequence are ordered !!!
-        VkAttachmentDescription attachments[2] = { color_attachment, depth_attachment };
+        VkAttachmentDescription attachments[2] = {color_attachment, depth_attachment};
         render_pass_info.attachmentCount = 2;
         render_pass_info.pAttachments = attachments;
 
@@ -155,7 +157,6 @@ void RasTwoPassApp::init_render_pass() {
         render_pass_info.pSubpasses = &subpass0;
 
         VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass));
-
     }
     // pass 1
     {
@@ -164,7 +165,7 @@ void RasTwoPassApp::init_render_pass() {
         color_attachment.format = _swapchain_image_format;
         color_attachment.samples = VK_SAMPLE_COUNT_1_BIT;
         color_attachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE; // save it
+        color_attachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;  // save it
         color_attachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         color_attachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
         color_attachment.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
@@ -181,7 +182,6 @@ void RasTwoPassApp::init_render_pass() {
         subpass0.colorAttachmentCount = 1;
         subpass0.pColorAttachments = &color_attachment_ref;
 
-
         // 3. Add render pass
         VkRenderPassCreateInfo render_pass_info = {};
         render_pass_info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -197,12 +197,10 @@ void RasTwoPassApp::init_render_pass() {
         VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass1));
     }
 
-    _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyRenderPass(_device, _render_pass1, nullptr);
-            vkDestroyRenderPass(_device, _render_pass, nullptr);
-        }
-    );
+    _main_deletion_queue.push_function([=]() {
+        vkDestroyRenderPass(_device, _render_pass1, nullptr);
+        vkDestroyRenderPass(_device, _render_pass, nullptr);
+    });
 }
 
 void RasTwoPassApp::init_framebuffers() {
@@ -210,58 +208,60 @@ void RasTwoPassApp::init_framebuffers() {
 
     // add attachment
     _depth_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);
-    add_attchment(_depth_attachment.data(), _DEPTH_FORMAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+    add_attchment(_depth_attachment.data(), _DEPTH_FORMAT,
+                  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     // set sampled bit (pass 2 will sample it)
     _color_attachment = std::vector<FrameBufferAttachment>(swapchain_image_count);
-    add_attchment(_color_attachment.data(), _COLOR_FORMAT, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
+    add_attchment(_color_attachment.data(), _COLOR_FORMAT,
+                  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
 
     // pass 0
     {
-        VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass, _window_extent);
+        VkFramebufferCreateInfo fb_info =
+            vkinit::framebuffer_create_info(_render_pass, _window_extent);
         _framebuffers = std::vector<VkFramebuffer>(swapchain_image_count);
         // create framebuffers for each of the swapchain image views
         for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-            VkImageView iv[2] = {
-                _color_attachment[i]._image_view,
-                _depth_attachment[i]._image_view
-            };
+            VkImageView iv[2] = {_color_attachment[i]._image_view,
+                                 _depth_attachment[i]._image_view};
 
             fb_info.attachmentCount = 2;
             fb_info.pAttachments = iv;
 
-            VkFramebuffer& framebuffer = _framebuffers[i];
+            VkFramebuffer &framebuffer = _framebuffers[i];
             VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
         }
     }
 
     // pass 1
     {
-        VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass1, _window_extent);
+        VkFramebufferCreateInfo fb_info =
+            vkinit::framebuffer_create_info(_render_pass1, _window_extent);
         _framebuffers_pass1 = std::vector<VkFramebuffer>(swapchain_image_count);
         // create framebuffers for each of the swapchain image views
         for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-            VkImageView& image_view = _swapchain_image_views[i];
+            VkImageView &image_view = _swapchain_image_views[i];
 
             fb_info.attachmentCount = 1;
             fb_info.pAttachments = &image_view;
 
-            VkFramebuffer& framebuffer = _framebuffers_pass1[i];
+            VkFramebuffer &framebuffer = _framebuffers_pass1[i];
             VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
         }
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers_pass1) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
-            for (VkFramebuffer& framebuffer : _framebuffers) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (VkFramebuffer &framebuffer: _framebuffers_pass1) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
         }
-    );
+        for (VkFramebuffer &framebuffer: _framebuffers) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
+        }
+    });
 }
 
 void RasTwoPassApp::render() {
-    std::cout << "You may have to implement render(), you have to invoke vkCmdBeginRenderPass() & vkCmdEndRenderPass()" << std::endl;
+    std::cout << "You may have to implement render(), you have to invoke vkCmdBeginRenderPass() & "
+                 "vkCmdEndRenderPass()"
+              << std::endl;
 }

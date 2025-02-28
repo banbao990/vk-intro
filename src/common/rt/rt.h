@@ -1,6 +1,6 @@
 #pragma once
-//#define VK_NO_PROTOTYPES
-//#include "volk/volk.h"
+// #define VK_NO_PROTOTYPES
+// #include "volk/volk.h"
 
 #include <vk_mem_alloc.h>
 #include <SDL.h>
@@ -28,20 +28,23 @@
 #include "disney.h"
 
 #define NAME(X) #X
-#define OUTPUT_KV(X) {                                                      \
-    std::string xname = NAME(X);                                            \
-    std::cout << xname.substr(2, xname.size() - 1) << ": " << X <<std::endl;\
-}
+#define OUTPUT_KV(X)                                                              \
+    {                                                                             \
+        std::string xname = NAME(X);                                              \
+        std::cout << xname.substr(2, xname.size() - 1) << ": " << X << std::endl; \
+    }
 
 enum TEST_TYPE {
-    NONE, EQUAL_SPP, EQUAL_TIME
+    NONE,
+    EQUAL_SPP,
+    EQUAL_TIME
 };
 
 class RTApp {
 public:
-    bool _ppg_on{ false };
+    bool _ppg_on{false};
 
-    RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer);
+    RTApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer);
     virtual ~RTApp();
 
     // run main loop
@@ -52,7 +55,7 @@ protected:
     // initializes everything in the engine
     void init();
     // windows event, return true if want to quit
-    bool deal_with_sdl_event(SDL_Event& e);
+    bool deal_with_sdl_event(SDL_Event &e);
     // draw pre frame
     void draw();
 
@@ -67,13 +70,13 @@ protected:
 
     std::string _name;
     uint32_t _frame_number = 0;
-    bool _is_initialized{ false };
+    bool _is_initialized{false};
 
     // windows
-    struct SDL_Window* _window = nullptr;
+    struct SDL_Window *_window = nullptr;
     VkExtent2D _window_extent{};
 
-    // vulkan 
+    // vulkan
     VkPhysicalDevice _physical_device = VK_NULL_HANDLE;         // Vulkan physical device
     VkPhysicalDeviceProperties _physical_device_properties{};   // phisical device properties
     VkDevice _device = VK_NULL_HANDLE;                          // Vulkan device for commands
@@ -94,13 +97,13 @@ protected:
     DeletionQueue _main_deletion_queue{};
 
     // command queue
-    VkQueue _graphics_queue = VK_NULL_HANDLE;              // queue we will submit to
-    uint32_t _graphics_queue_family = 0;                   // family of that queue
+    VkQueue _graphics_queue = VK_NULL_HANDLE;  // queue we will submit to
+    uint32_t _graphics_queue_family = 0;       // family of that queue
 
     // FPS
     FixSizeQueue<std::chrono::high_resolution_clock::time_point> _frame_time_samples;
 
-    void create_window(const char* name, uint32_t width, uint32_t height);
+    void create_window(const char *name, uint32_t width, uint32_t height);
 
     // command pool
     void init_commands();
@@ -121,12 +124,12 @@ protected:
 
     void init_commands_for_graphics_pipeline();
     void init_sync_structures_for_graphics_pass();
-    FrameData& get_current_frame();
+    FrameData &get_current_frame();
     uint32_t get_current_frame_idx() const;
     void basic_clean_up();
 
     // frame Data
-    static const uint32_t FRAME_OVERLAP = 2U; // TODO: !!!! error when set = 4
+    static const uint32_t FRAME_OVERLAP = 2U;  // TODO: !!!! error when set = 4
     FrameData _frames[FRAME_OVERLAP]{};
 
     // immediately execute
@@ -160,45 +163,45 @@ protected:
     RTMaterial _env_map{};
     VkDescriptorImageInfo _env_map_info{};
 
-    LoaderManager* _loader_manager;
+    LoaderManager *_loader_manager;
 
-    uint32_t _spp{ 0 };
-    int _light_id{ 100 };
-    int _glass_id{ 100 };
-    int _mirror_id{ 100 };
-    float _light_strength{ 1.0f };
+    uint32_t _spp{0};
+    int _light_id{100};
+    int _glass_id{100};
+    int _mirror_id{100};
+    float _light_strength{1.0f};
     DisneyParam _disney_param{};
-    bool _clamp_on{ false };
-    float _clamp_max{ 1000.0f };
+    bool _clamp_on{false};
+    float _clamp_max{1000.0f};
     std::chrono::high_resolution_clock::time_point _time_start{};
 
     // camera & user input
-    Camera                          mCamera{};
-    bool                            mCameraEnable{ false };
-    bool                            mWKeyDown{ false };
-    bool                            mAKeyDown{ false };
-    bool                            mSKeyDown{ false };
-    bool                            mDKeyDown{ false };
-    bool                            mCtrlDown{ false };
-    bool                            mLMBDown{ false };
-    vec2                            mCursorPos{};
+    Camera mCamera{};
+    bool mCameraEnable{false};
+    bool mWKeyDown{false};
+    bool mAKeyDown{false};
+    bool mSKeyDown{false};
+    bool mDKeyDown{false};
+    bool mCtrlDown{false};
+    bool mLMBDown{false};
+    vec2 mCursorPos{};
     std::chrono::high_resolution_clock::time_point mLastRec{};
 
     // test
-    TEST_TYPE _test_type{ NONE };
-    bool _test_on{ false };
-    bool _test_start{ false };
-    int _test_spp{ 100 };
+    TEST_TYPE _test_type{NONE};
+    bool _test_on{false};
+    bool _test_start{false};
+    int _test_spp{100};
     std::chrono::high_resolution_clock::time_point _time_record_start{};
-    float _test_time{ 5.0f };
+    float _test_time{5.0f};
     bool check_test_end();
     void reset();
 
     // ppg
-    bool _ppg_train_on{ false };
-    int _ppg_skip_first_data_obtain{ 2 }; // TODO: why skip 2
-    bool _ppg_test_on{ false };
-    bool _ppg_update_gpu_sdtree{ false };
+    bool _ppg_train_on{false};
+    int _ppg_skip_first_data_obtain{2};  // TODO: why skip 2
+    bool _ppg_test_on{false};
+    bool _ppg_update_gpu_sdtree{false};
     std::vector<STree> _stree{};
     std::vector<DTree> _dtree{};
     uint32_t _stree_buffer_size{};
@@ -209,7 +212,7 @@ protected:
     AllocatedBuffer _dtree_cpu{};
 
 public:
-    void immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function);
-    void add_to_deletion_queue(std::function<void()>&& function);
+    void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
+    void add_to_deletion_queue(std::function<void()> &&function);
     uint32_t get_min_acceleration_structure_scratch_offset_alignment();
 };

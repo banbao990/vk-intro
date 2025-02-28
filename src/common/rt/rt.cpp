@@ -1,7 +1,7 @@
 #include "rt.h"
 #include "../common/initializers.h"
 #include "../common/shader.h"
-#include "shared_with_shaders.h" // TODO: merge to 1
+#include "shared_with_shaders.h"  // TODO: merge to 1
 
 #include "imgui.h"
 #include "imgui_impl_vulkan.h"
@@ -26,18 +26,17 @@ void RTApp::init_imgui() {
     // the size of the pool is very oversize, but it'mesh_idx copied from imgui demo itself.
     const int MAX_SIZE_FOR_IMGUI = 100;
     VkDescriptorPoolSize pool_sizes[] = {
-        { VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MAX_SIZE_FOR_IMGUI },
-        { VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, MAX_SIZE_FOR_IMGUI }
-    };
+        {VK_DESCRIPTOR_TYPE_SAMPLER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC, MAX_SIZE_FOR_IMGUI},
+        {VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT, MAX_SIZE_FOR_IMGUI}};
 
     VkDescriptorPoolCreateInfo pool_info = {};
     pool_info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -77,22 +76,16 @@ void RTApp::init_imgui() {
     ImGui_ImplVulkan_Init(&init_info, _render_pass_for_imgui);
 
     // execute a gpu command to upload imgui font textures
-    immediate_submit(
-        [&](VkCommandBuffer cmd) {
-            ImGui_ImplVulkan_CreateFontsTexture(cmd);
-        }
-    );
+    immediate_submit([&](VkCommandBuffer cmd) { ImGui_ImplVulkan_CreateFontsTexture(cmd); });
 
     // clear font textures from cpu data
     ImGui_ImplVulkan_DestroyFontUploadObjects();
 
-    //add the destroy the imgui created structures
-    _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyDescriptorPool(_device, imgui_pool, nullptr);
-            ImGui_ImplVulkan_Shutdown();
-        }
-    );
+    // add the destroy the imgui created structures
+    _main_deletion_queue.push_function([=]() {
+        vkDestroyDescriptorPool(_device, imgui_pool, nullptr);
+        ImGui_ImplVulkan_Shutdown();
+    });
 }
 
 void RTApp::reset() {
@@ -101,7 +94,8 @@ void RTApp::reset() {
 }
 
 void RTApp::draw_imgui(VkCommandBuffer cmd) {
-    VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(_render_pass_for_imgui, _window_extent, _framebuffers_for_imgui[_swapchain_image_index]);
+    VkRenderPassBeginInfo render_pass_info = vkinit::renderpass_begin_info(
+        _render_pass_for_imgui, _window_extent, _framebuffers_for_imgui[_swapchain_image_index]);
     vkCmdBeginRenderPass(cmd, &render_pass_info, VK_SUBPASS_CONTENTS_INLINE);
 
     // ui start
@@ -116,10 +110,16 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         ++id;
         ImGui::PushID(id);
         ImGui::Checkbox("Enable Camera", &mCameraEnable);
-        ImGui::Text("position: %.3f, %.3f, %.3f", mCamera.GetPosition()[0], mCamera.GetPosition()[1], mCamera.GetPosition()[2]);
-        ImGui::Text("target: %.3f, %.3f, %.3f", mCamera.GetDirection()[0] + mCamera.GetPosition()[0], mCamera.GetDirection()[1] + mCamera.GetPosition()[1], mCamera.GetDirection()[2] + mCamera.GetPosition()[2]);
-        ImGui::Text("direction: %.3f, %.3f, %.3f", mCamera.GetDirection()[0], mCamera.GetDirection()[1], mCamera.GetDirection()[2]);
-        ImGui::Text("side: %.3f, %.3f, %.3f", mCamera.GetSide()[0], mCamera.GetSide()[1], mCamera.GetSide()[2]);
+        ImGui::Text("position: %.3f, %.3f, %.3f", mCamera.GetPosition()[0],
+                    mCamera.GetPosition()[1], mCamera.GetPosition()[2]);
+        ImGui::Text("target: %.3f, %.3f, %.3f",
+                    mCamera.GetDirection()[0] + mCamera.GetPosition()[0],
+                    mCamera.GetDirection()[1] + mCamera.GetPosition()[1],
+                    mCamera.GetDirection()[2] + mCamera.GetPosition()[2]);
+        ImGui::Text("direction: %.3f, %.3f, %.3f", mCamera.GetDirection()[0],
+                    mCamera.GetDirection()[1], mCamera.GetDirection()[2]);
+        ImGui::Text("side: %.3f, %.3f, %.3f", mCamera.GetSide()[0], mCamera.GetSide()[1],
+                    mCamera.GetSide()[2]);
         ImGui::PopID();
     }
     if (ImGui::CollapsingHeader("Film")) {
@@ -139,7 +139,9 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
 
         int temp = _light_id;
         ImGui::SliderInt("Light ID", &_light_id, 0, 20);
-        if (temp != _light_id) { reset(); }
+        if (temp != _light_id) {
+            reset();
+        }
 
         ImGui::PopID();
     }
@@ -150,23 +152,30 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
 
         int temp = _mirror_id;
         ImGui::SliderInt("Mirror ID", &_mirror_id, 0, 20);
-        if (temp != _mirror_id) { reset(); }
+        if (temp != _mirror_id) {
+            reset();
+        }
 
         temp = _glass_id;
         ImGui::SliderInt("Glass ID", &_glass_id, 0, 20);
-        if (temp != _glass_id) { reset(); }
+        if (temp != _glass_id) {
+            reset();
+        }
 
         if (ImGui::TreeNode("Disney")) {
-            ImGui::Text("Glass Component is not work! Low roughness may cause convergenve problems!");
+            ImGui::Text(
+                "Glass Component is not work! Low roughness may cause convergenve problems!");
             ++id;
             ImGui::PushID(id);
 
-            Disney& disney = _disney_param._disney;
+            Disney &disney = _disney_param._disney;
 
             bool disney_changed = false;
             temp = _disney_param._id;
             ImGui::SliderInt("Disney ID", &_disney_param._id, 0, 20);
-            if (temp != _disney_param._id) { reset(); }
+            if (temp != _disney_param._id) {
+                reset();
+            }
 
             disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
             disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.1f, 1.0f);
@@ -174,20 +183,25 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             disney_changed |= ImGui::SliderFloat("Metallic", &disney._metallic, 0.0f, 1.0f);
 
             temp = disney._is_refractive;
-            ImGui::Checkbox("Is Refractive", (bool*)&disney._is_refractive);
+            ImGui::Checkbox("Is Refractive", (bool *)&disney._is_refractive);
             disney_changed |= (temp != disney._is_refractive);
 
             disney_changed |= ImGui::SliderFloat("Anisotropic", &disney._anisotropic, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Index of Refraction", &disney._eta, 0.5f, 2.0f);
-            disney_changed |= ImGui::SliderFloat("Clearcoat Gloss", &disney._clearcoat_gloss, 0.0f, 1.0f);
+            disney_changed |=
+                ImGui::SliderFloat("Clearcoat Gloss", &disney._clearcoat_gloss, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Sheen Tint", &disney._sheen_tint, 0.0f, 1.0f);
-            disney_changed |= ImGui::SliderFloat("Specular Transmission", &disney._specular_transmission, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Specular Transmission",
+                                                 &disney._specular_transmission, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Clearcoat", &disney._clearcoat, 0.0f, 1.0f);
-            disney_changed |= ImGui::SliderFloat("Specular Tint", &disney._specular_tint, 0.0f, 1.0f);
+            disney_changed |=
+                ImGui::SliderFloat("Specular Tint", &disney._specular_tint, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Sheen", &disney._sheen, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Specular", &disney._specular, 0.0f, 1.0f);
 
-            if (disney_changed) { reset(); }
+            if (disney_changed) {
+                reset();
+            }
 
             ImGui::PopID();
             ImGui::TreePop();
@@ -198,9 +212,9 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
 
     if (ImGui::CollapsingHeader("PPG")) {
         ImGui::Checkbox("PPG On", &_ppg_on);
-        //if (STree::__trained_spp > 200) {
-        // if (STree::__node_index > 2000) {
-            //_ppg_train_on = false;
+        // if (STree::__trained_spp > 200) {
+        //  if (STree::__node_index > 2000) {
+        //_ppg_train_on = false;
         //}
         bool temp_train_on = _ppg_train_on;
         ImGui::Checkbox("PPG Training", &_ppg_train_on);
@@ -216,13 +230,18 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         }
 
         ImGui::Text("STree nodes: %d", STree::__node_index + 1);
-        if (_ppg_train_on) { _ppg_test_on = false; }
+        if (_ppg_train_on) {
+            _ppg_test_on = false;
+        }
     }
     if (ImGui::CollapsingHeader("Test")) {
         const bool temp_test_start = _test_start && !check_test_end();
-        if (temp_test_start) { ImGui::BeginDisabled(); }
-        ImGui::RadioButton("equal spp", (int*)(&_test_type), 1);
-        ImGui::SameLine(); ImGui::RadioButton("equal time", (int*)(&_test_type), 2);
+        if (temp_test_start) {
+            ImGui::BeginDisabled();
+        }
+        ImGui::RadioButton("equal spp", (int *)(&_test_type), 1);
+        ImGui::SameLine();
+        ImGui::RadioButton("equal time", (int *)(&_test_type), 2);
         if (_test_type == EQUAL_SPP) {
             ImGui::SliderInt("spp", &_test_spp, 100, 1000);
         } else if (_test_type == EQUAL_TIME) {
@@ -235,7 +254,9 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             _time_start = _frame_time_samples.back();
             _spp = 1;
         }
-        if (temp_test_start) { ImGui::EndDisabled(); }
+        if (temp_test_start) {
+            ImGui::EndDisabled();
+        }
     }
     // ui end
 
@@ -269,7 +290,7 @@ void RTApp::init_render_pass_for_imgui() {
     // 2. Add subpass
     VkAttachmentReference color_attachment_ref = {};
     // attachment number will index into the pAttachments array in the parent renderpass itself
-    color_attachment_ref.attachment = 0; // index = 0
+    color_attachment_ref.attachment = 0;  // index = 0
     color_attachment_ref.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
     // 1 subpass
@@ -293,11 +314,7 @@ void RTApp::init_render_pass_for_imgui() {
     VK_CHECK(vkCreateRenderPass(_device, &render_pass_info, nullptr, &_render_pass_for_imgui));
 
     _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyRenderPass(_device, _render_pass_for_imgui, nullptr);
-        }
-    );
-
+        [=]() { vkDestroyRenderPass(_device, _render_pass_for_imgui, nullptr); });
 }
 
 void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
@@ -311,26 +328,28 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                 copy.srcOffset = 0;
                 copy.dstOffset = 0;
                 copy.size = _radiance_cache_buffer_size;
-                //std::vector<float> li_record;
-                vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1, &copy);
+                // std::vector<float> li_record;
+                vkCmdCopyBuffer(cmd, _radiance_cache_gpu._buffer, _radiance_cache_cpu._buffer, 1,
+                                &copy);
                 {
-                    void* data;
+                    void *data;
                     vmaMapMemory(_allocator, _radiance_cache_cpu._allocation, &data);
-                    STree* s_root = _stree.data();
-                    DTree* d_root = _dtree.data();
-                    RecordPerPixel* d = static_cast<RecordPerPixel*>(data);
+                    STree *s_root = _stree.data();
+                    DTree *d_root = _dtree.data();
+                    RecordPerPixel *d = static_cast<RecordPerPixel *>(data);
                     const uint32_t windows_size = _window_extent.width * _window_extent.height;
                     bool should_update_sdtree = false;
                     for (uint32_t i = 0; i < windows_size; ++i) {
                         if (d->num != 0) {
                             should_update_sdtree = true;
                             for (int num_idx = 0; num_idx < d->num; ++num_idx) {
-                                auto& pos = d->record[num_idx].p;
-                                auto& dir = d->record[num_idx].d;
-                                int index = s_root->find_index(0, 0, { pos[0],pos[1],pos[2] });
+                                auto &pos = d->record[num_idx].p;
+                                auto &dir = d->record[num_idx].d;
+                                int index = s_root->find_index(0, 0, {pos[0], pos[1], pos[2]});
                                 int dtree_index = DTree::get_root_index_by_STree_index(index);
-                                //li_record.push_back(pos[3]);
-                                d_root[dtree_index].fill(dtree_index, dir[0], dir[1], 1.0f, { {0.0,1.0f},{0.0f,1.0f} });
+                                // li_record.push_back(pos[3]);
+                                d_root[dtree_index].fill(dtree_index, dir[0], dir[1], 1.0f,
+                                                         {{0.0, 1.0f}, {0.0f, 1.0f}});
                             }
                         }
                         ++d;
@@ -348,11 +367,11 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                     }
                     vmaUnmapMemory(_allocator, _radiance_cache_cpu._allocation);
 
-                    //if (li_record.begin() != li_record.end()) {
-                    //    sort(li_record.begin(), li_record.end());
-                    //    std::cout << *li_record.begin() << std::endl;
-                    //    std::cout << *li_record.rbegin() << std::endl;
-                    //}
+                    // if (li_record.begin() != li_record.end()) {
+                    //     sort(li_record.begin(), li_record.end());
+                    //     std::cout << *li_record.begin() << std::endl;
+                    //     std::cout << *li_record.rbegin() << std::endl;
+                    // }
                 }
                 if (--STree::__trained_spp <= 0) {
                     _ppg_train_on = false;
@@ -364,7 +383,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
             {
                 auto s_root = _stree.data();
                 auto d_root = _dtree.data();
-                void* data;
+                void *data;
                 vmaMapMemory(_allocator, _dtree_cpu._allocation, &data);
                 memcpy(data, _dtree.data(), _dtree_buffer_size);
                 vmaUnmapMemory(_allocator, _dtree_cpu._allocation);
@@ -376,7 +395,7 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
                 vkCmdCopyBuffer(cmd, _dtree_cpu._buffer, _dtree_gpu._buffer, 1, &copy);
             }
             {
-                void* data;
+                void *data;
                 vmaMapMemory(_allocator, _stree_cpu._allocation, &data);
                 memcpy(data, _stree.data(), _stree_buffer_size);
                 vmaUnmapMemory(_allocator, _stree_cpu._allocation);
@@ -406,7 +425,8 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     }
     float dt = 0.0f;
     if (_frame_time_samples.size() >= 2) {
-        auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(_frame_time_samples.back() - mLastRec);
+        auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(
+            _frame_time_samples.back() - mLastRec);
         dt = delta.count() / 2.0f;
     }
     moveDelta *= sMoveSpeed * dt * (mCtrlDown ? sAccelMult : 1.0f);
@@ -421,7 +441,8 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
     uniform_data.camDir = vec4(mCamera.GetDirection(), 0.0f);
     uniform_data.camUp = vec4(mCamera.GetUp(), 0.0f);
     uniform_data.camSide = vec4(mCamera.GetSide(), 0.0f);
-    uniform_data.camNearFarFov = vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane() * 100, Deg2Rad(mCamera.GetFovY()), 0.0f);
+    uniform_data.camNearFarFov =
+        vec4(mCamera.GetNearPlane(), mCamera.GetFarPlane() * 100, Deg2Rad(mCamera.GetFovY()), 0.0f);
     uniform_data.accumulate_spp = _spp;
     uniform_data.random_seed = rand();
     uniform_data.light_strength = _light_strength;
@@ -437,103 +458,67 @@ void RTApp::fill_rt_command_buffer(VkCommandBuffer cmd) {
 
     mLastRec = _frame_time_samples.back();
 
-    char* data = nullptr;
-    vmaMapMemory(_allocator, _uniform_data_buffer._allocation, (void**)(&data));
+    char *data = nullptr;
+    vmaMapMemory(_allocator, _uniform_data_buffer._allocation, (void **)(&data));
     memcpy(data, &uniform_data, sizeof(UniformParams));
     vmaUnmapMemory(_allocator, _uniform_data_buffer._allocation);
 
-    VkImageSubresourceRange subresource_range = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    VkImageSubresourceRange subresource_range = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1};
     // wait for offscreen image
     // TODO: need more specific cmd stage
-    rt_utils::image_barrier(cmd,
-        _offscreen_image[0]._image._image,
-        subresource_range,
-        0,
-        VK_ACCESS_SHADER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_GENERAL
-    );
+    rt_utils::image_barrier(cmd, _offscreen_image[0]._image._image, subresource_range, 0,
+                            VK_ACCESS_SHADER_WRITE_BIT, VK_IMAGE_LAYOUT_UNDEFINED,
+                            VK_IMAGE_LAYOUT_GENERAL);
 
-    rt_utils::image_barrier(cmd,
-        _offscreen_image[1]._image._image,
-        subresource_range,
-        0,
-        VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_GENERAL
-    );
+    rt_utils::image_barrier(cmd, _offscreen_image[1]._image._image, subresource_range, 0,
+                            VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT,
+                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
 
     /// ray tracing
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _rt_pipeline);
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _rt_pipeline_layout, 0, static_cast<uint32_t>(_rt_set.size()), _rt_set.data(), 0, 0);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, _rt_pipeline_layout, 0,
+                            static_cast<uint32_t>(_rt_set.size()), _rt_set.data(), 0, 0);
 
     VkStridedDeviceAddressRegionKHR raygen_region = {
-        _SBT.get_SBT_address(_device) + _SBT.get_raygen_offset(),
-        _SBT.get_groups_stride(),
-        _SBT.get_raygen_size()
-    };
+        _SBT.get_SBT_address(_device) + _SBT.get_raygen_offset(), _SBT.get_groups_stride(),
+        _SBT.get_raygen_size()};
 
     VkStridedDeviceAddressRegionKHR missRegion = {
-        _SBT.get_SBT_address(_device) + _SBT.get_miss_groups_offset(),
-        _SBT.get_groups_stride(),
-        _SBT.get_miss_groups_size()
-    };
+        _SBT.get_SBT_address(_device) + _SBT.get_miss_groups_offset(), _SBT.get_groups_stride(),
+        _SBT.get_miss_groups_size()};
 
     VkStridedDeviceAddressRegionKHR hitRegion = {
-       _SBT.get_SBT_address(_device) + _SBT.get_hit_groups_offset(),
-        _SBT.get_groups_stride(),
-        _SBT.get_hit_groups_size()
-    };
+        _SBT.get_SBT_address(_device) + _SBT.get_hit_groups_offset(), _SBT.get_groups_stride(),
+        _SBT.get_hit_groups_size()};
 
     VkStridedDeviceAddressRegionKHR callable_region = {};
     if (!(_test_start && check_test_end())) {
-        _loader_manager->vkCmdTraceRaysKHR(cmd, &raygen_region, &missRegion, &hitRegion, &callable_region, _window_extent.width, _window_extent.height, 1u);
+        _loader_manager->vkCmdTraceRaysKHR(cmd, &raygen_region, &missRegion, &hitRegion,
+                                           &callable_region, _window_extent.width,
+                                           _window_extent.height, 1u);
     }
 
     // copy to swapchain
     // TODO: need more specific cmd stage
-    rt_utils::image_barrier(cmd,
-        _offscreen_image[0]._image._image,
-        subresource_range,
-        VK_ACCESS_SHADER_WRITE_BIT,
-        VK_ACCESS_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_GENERAL,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL
-    );
+    rt_utils::image_barrier(cmd, _offscreen_image[0]._image._image, subresource_range,
+                            VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+                            VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     VkImage swap = _swapchain_images[_swapchain_image_index];
-    rt_utils::image_barrier(cmd,
-        swap,
-        subresource_range,
-        0,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL
-    );
+    rt_utils::image_barrier(cmd, swap, subresource_range, 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
     VkImageCopy copy_region = {};
-    copy_region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copy_region.srcOffset = { 0, 0, 0 };
-    copy_region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copy_region.dstOffset = { 0, 0, 0 };
-    copy_region.extent = { _window_extent.width, _window_extent.height, 1 };
-    vkCmdCopyImage(cmd,
-        _offscreen_image[0]._image._image,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        swap,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1,
-        &copy_region
-    );
+    copy_region.srcSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    copy_region.srcOffset = {0, 0, 0};
+    copy_region.dstSubresource = {VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1};
+    copy_region.dstOffset = {0, 0, 0};
+    copy_region.extent = {_window_extent.width, _window_extent.height, 1};
+    vkCmdCopyImage(cmd, _offscreen_image[0]._image._image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   swap, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy_region);
 
-    rt_utils::image_barrier(cmd,
-        swap,
-        subresource_range,
-        VK_ACCESS_TRANSFER_WRITE_BIT,
-        0,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
-    );
+    rt_utils::image_barrier(cmd, swap, subresource_range, VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
     // draw imgui
     draw_imgui(cmd);
@@ -558,7 +543,8 @@ bool RTApp::check_test_end() {
     return ret;
 }
 
-RTApp::RTApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer) :_frame_time_samples(30) {
+RTApp::RTApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer)
+    : _frame_time_samples(30) {
     _window_extent.width = width;
     _window_extent.height = height;
     _name = name;
@@ -572,11 +558,10 @@ RTApp::~RTApp() {
     basic_clean_up();
 }
 
-
-int get_dtree_index(vec3 position, STree* s_root) {
+int get_dtree_index(vec3 position, STree *s_root) {
     int index = 0;
     int depth = 0;
-    STree* now = s_root + index;
+    STree *now = s_root + index;
     // have child, recursive
     while (now->_child_index[0] != -1) {
         int sub_time = (depth / 3);
@@ -592,12 +577,13 @@ int get_dtree_index(vec3 position, STree* s_root) {
     return index;
 }
 
-
 vec2 xyz2thetaphi(vec3 xyz) {
     xyz = normalize(xyz);
     float cos_theta = std::min(std::max(xyz.z, -1.0f), 1.0f);
     float phi = std::atan2(xyz.y, xyz.z);
-    if (phi < 0) { phi += BB_PI2; }
+    if (phi < 0) {
+        phi += BB_PI2;
+    }
     return vec2((cos_theta + 1.0f) / 2.0f, phi / BB_PI2);
 }
 
@@ -610,13 +596,13 @@ vec3 thetaphi2xyz(vec2 tp) {
     return vec3(sin_theta * sc_phi.y, sin_theta * sc_phi.x, cos_theta);
 }
 
-float sample_direction(vec3 direction, int index, DTree* d_root) {
+float sample_direction(vec3 direction, int index, DTree *d_root) {
     std::random_device seed;
     std::ranlux48 engine(seed());
     std::uniform_real_distribution<> distrib(0, 1.0f);
 
     index = (index << DTREE_MAX_NODE_BIT);
-    DTree* now = d_root + index;
+    DTree *now = d_root + index;
     float root_flux = now->_flux;
     vec4 interval = vec4(0.0f, 1.0f, 0.0f, 1.0f);
     int depth = 0;
@@ -648,7 +634,7 @@ float sample_direction(vec3 direction, int index, DTree* d_root) {
     }
 
     float pdf = now->_flux / root_flux / (4 * BB_PI);
-    //pdf *= pow(4, depth);
+    // pdf *= pow(4, depth);
     vec2 dir;
     dir[0] = (distrib(engine) * (interval[1] - interval[0]) + interval[0]);
     dir[1] = (distrib(engine) * (interval[3] - interval[2]) + interval[2]);
@@ -658,15 +644,17 @@ float sample_direction(vec3 direction, int index, DTree* d_root) {
 
 void test_sdtree() {
     std::vector<STree> tmp_stree(STree::MAX_NODE);
-    std::vector<DTree> tmp_dtree(DTree::MAX_NODE * STree::MAX_NODE); // TODO: node aligned, root_idx = 0 \to root_idx = MAX_NODE - 1
+    std::vector<DTree> tmp_dtree(DTree::MAX_NODE * STree::MAX_NODE);  // TODO: node aligned, root_idx
+                                                                      // = 0 \to root_idx = MAX_NODE
+                                                                      // - 1
     STree::__root = tmp_dtree.data();
     DTree::__root = tmp_dtree.data();
 
     int xx = 0;
     //
     std::cout << "STree Test Start:" << std::endl;
-    STree* s_root = tmp_stree.data();
-    DTree* d_root = tmp_dtree.data();
+    STree *s_root = tmp_stree.data();
+    DTree *d_root = tmp_dtree.data();
 
     s_root->initial_split(0, 2);
     for (int i = 0; i <= STree::__node_index; ++i) {
@@ -676,9 +664,9 @@ void test_sdtree() {
     s_root->print(0, 0);
 
     for (int i = 0; i < 10; ++i) {
-        int index = s_root->find_index(0, 0, { 0.1f,0.1f,0.1f });
+        int index = s_root->find_index(0, 0, {0.1f, 0.1f, 0.1f});
         int dtree_index = DTree::get_root_index_by_STree_index(index);
-        d_root[dtree_index].fill(dtree_index, 0.3f, 0.3f, 10.0f, { {0.0f,1.0f},{0.0f,1.0f} });
+        d_root[dtree_index].fill(dtree_index, 0.3f, 0.3f, 10.0f, {{0.0f, 1.0f}, {0.0f, 1.0f}});
     }
     s_root->print(0, 0);
     s_root->update(0, 0, 1);
@@ -693,37 +681,34 @@ void test_sdtree() {
         d_root[dtree_index].print(dtree_index, 0);
     }
 
-    const Position pos = { 0.1f,0.1f,0.1f };
-    const vec3 pos_v = { pos.v[0], pos.v[1], pos.v[2] };
+    const Position pos = {0.1f, 0.1f, 0.1f};
+    const vec3 pos_v = {pos.v[0], pos.v[1], pos.v[2]};
     int t_index = get_dtree_index(pos_v, s_root);
     sample_direction(vec3(1.0f), t_index, d_root);
 
     sample_direction(vec3(1.0f), 9, d_root);
 
-
     // sample test
 }
-
 
 void RTApp::run() {
     init();
 
     if (_ppg_on) {
         std::cout << "PPG On" << std::endl;
-        std::cout << "DTree Size: " << sizeof(DTree) << ", STree Size: " << sizeof(STree) << std::endl;
+        std::cout << "DTree Size: " << sizeof(DTree) << ", STree Size: " << sizeof(STree)
+                  << std::endl;
 
         std::cout << "DTree Info:\n"
-            << DTree::__node_index.size() << std::endl
-            << DTree::__node_index.front() << std::endl
-            << DTree::__node_index.back() << std::endl
-            << DTree::__rho << std::endl;
+                  << DTree::__node_index.size() << std::endl
+                  << DTree::__node_index.front() << std::endl
+                  << DTree::__node_index.back() << std::endl
+                  << DTree::__rho << std::endl;
 
-        std::cout
-            << "sizeof(RadianceCache): " << sizeof(RadianceCache) << std::endl
-            << "sizeof(RecordPerPixel): " << sizeof(RecordPerPixel) << std::endl;
+        std::cout << "sizeof(RadianceCache): " << sizeof(RadianceCache) << std::endl
+                  << "sizeof(RecordPerPixel): " << sizeof(RecordPerPixel) << std::endl;
 
         // test_sdtree();
-
     }
 
     // deal with SDL event
@@ -783,7 +768,7 @@ void RTApp::init() {
     _is_initialized = true;
 }
 
-bool RTApp::deal_with_sdl_event(SDL_Event& e) {
+bool RTApp::deal_with_sdl_event(SDL_Event &e) {
     ImGui_ImplSDL2_ProcessEvent(&e);
 
     // close the window when user alt-f4s or clicks the X button
@@ -798,10 +783,18 @@ bool RTApp::deal_with_sdl_event(SDL_Event& e) {
     // onkey
     if (e.type == SDL_KEYDOWN) {
         switch (e.key.keysym.sym) {
-        case SDLK_w: mWKeyDown = true; break;
-        case SDLK_a: mAKeyDown = true; break;
-        case SDLK_s: mSKeyDown = true; break;
-        case SDLK_d: mDKeyDown = true; break;
+        case SDLK_w:
+            mWKeyDown = true;
+            break;
+        case SDLK_a:
+            mAKeyDown = true;
+            break;
+        case SDLK_s:
+            mSKeyDown = true;
+            break;
+        case SDLK_d:
+            mDKeyDown = true;
+            break;
 
         case SDLK_LCTRL:
         case SDLK_RCTRL:
@@ -812,10 +805,18 @@ bool RTApp::deal_with_sdl_event(SDL_Event& e) {
 
     else if (e.type == SDL_KEYUP) {
         switch (e.key.keysym.sym) {
-        case SDLK_w: mWKeyDown = false; break;
-        case SDLK_a: mAKeyDown = false; break;
-        case SDLK_s: mSKeyDown = false; break;
-        case SDLK_d: mDKeyDown = false; break;
+        case SDLK_w:
+            mWKeyDown = false;
+            break;
+        case SDLK_a:
+            mAKeyDown = false;
+            break;
+        case SDLK_s:
+            mSKeyDown = false;
+            break;
+        case SDLK_d:
+            mDKeyDown = false;
+            break;
 
         case SDLK_LCTRL:
         case SDLK_RCTRL:
@@ -858,16 +859,17 @@ void RTApp::draw() {
         return;
     }
 
-    FrameData& frame = get_current_frame();
+    FrameData &frame = get_current_frame();
 
     // 1. check state
     // blocked or timeout
     // wait until the GPU has finished rendering the last frame.
     // timeout of 1 second
     VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
-    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence)); // !!important!!
+    VK_CHECK(vkResetFences(_device, 1, &frame._render_fence));  // !!important!!
 
-    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore, nullptr, &_swapchain_image_index));
+    VK_CHECK(vkAcquireNextImageKHR(_device, _swapchain, 1'000'000'000, frame._present_semaphore,
+                                   nullptr, &_swapchain_image_index));
 
     // 2. prepare command buffer
 
@@ -876,7 +878,8 @@ void RTApp::draw() {
     VK_CHECK(vkResetCommandBuffer(cmd, 0));
 
     // We will use this command buffer exactly once
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
 
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
@@ -921,8 +924,8 @@ float RTApp::average_frame_time() {
         return 0.0f;
     }
     using Duration = std::chrono::duration<float>;
-    auto delta = std::chrono::duration_cast<Duration>(
-        _frame_time_samples.back() - _frame_time_samples.front());
+    auto delta = std::chrono::duration_cast<Duration>(_frame_time_samples.back() -
+                                                      _frame_time_samples.front());
     return delta.count() / (float)(_frame_time_samples.size() - 1);
 }
 
@@ -936,54 +939,52 @@ float RTApp::fps() {
 }
 
 void RTApp::init_vulkan() {
-    //VK_CHECK(volkInitialize());
-    // 1. VkInstance
-    // one process can only have one instance
+    // VK_CHECK(volkInitialize());
+    //  1. VkInstance
+    //  one process can only have one instance
     vkb::InstanceBuilder builder;
-    builder.set_app_name(_name.c_str()).require_api_version(1, 3, 0); // Vulkan SDK is 1.3.236.0
+    builder.set_app_name(_name.c_str()).require_api_version(1, 3, 0);  // Vulkan SDK is 1.3.236.0
     if (_use_validation_layer) {
         // for debug
-        builder.request_validation_layers(true) // validation layer
-            .use_default_debug_messenger();     // catches the log messages that the validation layers will output
+        builder
+            .request_validation_layers(true)  // validation layer
+            .use_default_debug_messenger();   // catches the log messages that the validation layers
+                                              // will output
     }
     // make the Vulkan instance
     vkb::Instance vkb_inst = builder.build().value();
     _instance = vkb_inst.instance;
     _debug_messager = vkb_inst.debug_messenger;
 
-    //volkLoadInstance(_instance);
-    // 2. VkSurface
-    // get surface from the window
+    // volkLoadInstance(_instance);
+    //  2. VkSurface
+    //  get surface from the window
     SDL_Vulkan_CreateSurface(_window, _instance, &_surface);
 
     // 3. VkPhysicalDevice
     vkb::PhysicalDeviceSelector selector(vkb_inst);
 
-    std::vector<const char*> required_extensions({
-            VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-            VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-            VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-            VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
-            VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
-            VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-            VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
-        }
-    );
+    std::vector<const char *> required_extensions({
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+    });
 
-    vkb::PhysicalDevice physical_device = selector
-        .add_required_extensions(required_extensions)
-        .set_minimum_version(1, 3)
-        .set_surface(_surface)
-        .select()
-        .value();
+    vkb::PhysicalDevice physical_device = selector.add_required_extensions(required_extensions)
+                                              .set_minimum_version(1, 3)
+                                              .set_surface(_surface)
+                                              .select()
+                                              .value();
 
     _physical_device = physical_device.physical_device;
     _physical_device_properties = physical_device.properties;
     if (_physical_device_properties.limits.maxBoundDescriptorSets < SWS_NUM_SETS) {
-        std::cerr
-            << "Max Descriptor Sets should >= " << SWS_NUM_SETS
-            << ", your limits is " << _physical_device_properties.limits.maxBoundDescriptorSets
-            << std::endl;
+        std::cerr << "Max Descriptor Sets should >= " << SWS_NUM_SETS << ", your limits is "
+                  << _physical_device_properties.limits.maxBoundDescriptorSets << std::endl;
     }
 
     // get ray-tracing properties
@@ -999,24 +1000,30 @@ void RTApp::init_vulkan() {
     vkb::DeviceBuilder device_builder(physical_device);
     // ray tracing features
     // (1) to build acceleration structures
-    VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_feature{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR };
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR accel_feature{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR};
     accel_feature.accelerationStructure = VK_TRUE;
     device_builder.add_pNext(&accel_feature);
     // (2) required by ray tracing pipeline
-    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_feature{ VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR };
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rt_pipeline_feature{
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR};
     rt_pipeline_feature.rayTracingPipeline = VK_TRUE;
     device_builder.add_pNext(&rt_pipeline_feature);
     // TODO
-    VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES };
+    VkPhysicalDeviceBufferDeviceAddressFeatures buffer_device_address = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES};
     buffer_device_address.bufferDeviceAddress = VK_TRUE;
     device_builder.add_pNext(&buffer_device_address);
     // TODO
-    VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES };
-    //device_builder.add_pNext(&descriptor_indexing);
+    VkPhysicalDeviceDescriptorIndexingFeatures descriptor_indexing = {
+        VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES};
+    // device_builder.add_pNext(&descriptor_indexing);
 
-    VkPhysicalDeviceFeatures2 features2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2 };
+    VkPhysicalDeviceFeatures2 features2 = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
     features2.pNext = &descriptor_indexing;
-    vkGetPhysicalDeviceFeatures2(_physical_device, &features2); // TODO: can enable all features(it and its pNext), now does not link them all
+    vkGetPhysicalDeviceFeatures2(_physical_device,
+                                 &features2);  // TODO: can enable all features(it and its pNext),
+                                               // now does not link them all
     device_builder.add_pNext(&features2);
 
     vkb::Device vkb_device = device_builder.build().value();
@@ -1024,10 +1031,12 @@ void RTApp::init_vulkan() {
     _device = vkb_device.device;
 
     // get raytracing limits
-    VkPhysicalDeviceProperties2 property_as = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2 };
-    _as_property = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR };
+    VkPhysicalDeviceProperties2 property_as = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2};
+    _as_property = {VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR};
     property_as.pNext = &_as_property;
-    vkGetPhysicalDeviceProperties2(_physical_device, &property_as); // TODO: can enable all features(it and its pNext), now does not link them all
+    vkGetPhysicalDeviceProperties2(_physical_device,
+                                   &property_as);  // TODO: can enable all features(it and its
+                                                   // pNext), now does not link them all
 
     // 5. Queue (for rendering)
     _graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
@@ -1040,11 +1049,7 @@ void RTApp::init_vulkan() {
     allocator_info.instance = _instance;
     allocator_info.flags = VMA_ALLOCATOR_CREATE_BUFFER_DEVICE_ADDRESS_BIT;
     VK_CHECK(vmaCreateAllocator(&allocator_info, &_allocator));
-    _main_deletion_queue.push_function(
-        [=]() {
-            vmaDestroyAllocator(_allocator);
-        }
-    );
+    _main_deletion_queue.push_function([=]() { vmaDestroyAllocator(_allocator); });
 
     // 7. loader
     _loader_manager = LoaderManager::get_instance();
@@ -1054,17 +1059,18 @@ void RTApp::init_vulkan() {
 void RTApp::init_swapchain() {
     vkb::SwapchainBuilder swapchain_builder(_physical_device, _device, _surface);
 
-    VkImageUsageFlags usage_flags = VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    VkImageUsageFlags usage_flags =
+        VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    vkb::Swapchain swapchain = swapchain_builder
-        .set_desired_format({ VK_FORMAT_R8G8B8A8_UNORM })
-        .set_image_usage_flags(usage_flags)
-        //.use_default_format_selection()
-        //.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)      // hard V-Sync
-        .set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR) // no V-Sync
-        .set_desired_extent(_window_extent.width, _window_extent.height)
-        .build()
-        .value();
+    vkb::Swapchain swapchain =
+        swapchain_builder.set_desired_format({VK_FORMAT_R8G8B8A8_UNORM})
+            .set_image_usage_flags(usage_flags)
+            //.use_default_format_selection()
+            //.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)      // hard V-Sync
+            .set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)  // no V-Sync
+            .set_desired_extent(_window_extent.width, _window_extent.height)
+            .build()
+            .value();
 
     // store swapchain and its related images
     _swapchain = swapchain.swapchain;
@@ -1072,14 +1078,12 @@ void RTApp::init_swapchain() {
     _swapchain_image_views = swapchain.get_image_views().value();
     _swapchain_image_format = swapchain.image_format;
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkImageView image_view : _swapchain_image_views) {
-                vkDestroyImageView(_device, image_view, nullptr);
-            }
-            vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+    _main_deletion_queue.push_function([&]() {
+        for (VkImageView image_view: _swapchain_image_views) {
+            vkDestroyImageView(_device, image_view, nullptr);
         }
-    );
+        vkDestroySwapchainKHR(_device, _swapchain, nullptr);
+    });
 }
 
 void RTApp::flush_deletion_queue_and_vulkan_resources() {
@@ -1105,23 +1109,23 @@ void RTApp::init_sync_structures_for_graphics_pass() {
     // initialized with signaled state
     VkFenceCreateInfo fence_create_info = vkinit::fence_create_info(VK_FENCE_CREATE_SIGNALED_BIT);
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
         VK_CHECK(vkCreateFence(_device, &fence_create_info, nullptr, &frame._render_fence));
 
         VkSemaphoreCreateInfo semaphore_create_info = vkinit::semaphore_create_info();
-        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._present_semaphore));
-        VK_CHECK(vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._render_semaphore));
+        VK_CHECK(
+            vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._present_semaphore));
+        VK_CHECK(
+            vkCreateSemaphore(_device, &semaphore_create_info, nullptr, &frame._render_semaphore));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (FrameData& frame : _frames) {
-                vkDestroySemaphore(_device, frame._present_semaphore, nullptr);
-                vkDestroySemaphore(_device, frame._render_semaphore, nullptr);
-                vkDestroyFence(_device, frame._render_fence, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (FrameData &frame: _frames) {
+            vkDestroySemaphore(_device, frame._present_semaphore, nullptr);
+            vkDestroySemaphore(_device, frame._render_semaphore, nullptr);
+            vkDestroyFence(_device, frame._render_fence, nullptr);
         }
-    );
+    });
 }
 
 void RTApp::init_sync_structures() {
@@ -1129,12 +1133,10 @@ void RTApp::init_sync_structures() {
 
     // immediately execute
     VkFenceCreateInfo upload_fence_create_info = vkinit::fence_create_info();
-    VK_CHECK(vkCreateFence(_device, &upload_fence_create_info, nullptr, &_upload_context._upload_fence));
+    VK_CHECK(
+        vkCreateFence(_device, &upload_fence_create_info, nullptr, &_upload_context._upload_fence));
     _main_deletion_queue.push_function(
-        [&]() {
-            vkDestroyFence(_device, _upload_context._upload_fence, nullptr);
-        }
-    );
+        [&]() { vkDestroyFence(_device, _upload_context._upload_fence, nullptr); });
 }
 
 void RTApp::init_commands_for_graphics_pipeline() {
@@ -1143,30 +1145,29 @@ void RTApp::init_commands_for_graphics_pipeline() {
     VkCommandPoolCreateInfo cmd_pool_info = vkinit::command_pool_create_info(
         _graphics_queue_family,
         // we also want the pool to allow for resetting of individual command buffers
-        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-    );
+        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
 
     for (int i = 0; i < FRAME_OVERLAP; ++i) {
-        FrameData& frame = _frames[i];
+        FrameData &frame = _frames[i];
         VK_CHECK(vkCreateCommandPool(_device, &cmd_pool_info, nullptr, &frame._command_pool));
         // Create Command Buffer
-        VkCommandBufferAllocateInfo cmd_alloc_info = vkinit::command_buffer_allocate_info(frame._command_pool);
+        VkCommandBufferAllocateInfo cmd_alloc_info =
+            vkinit::command_buffer_allocate_info(frame._command_pool);
         VK_CHECK(vkAllocateCommandBuffers(_device, &cmd_alloc_info, &frame._main_command_buffer));
     }
 
     // resources
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (int i = 0; i < FRAME_OVERLAP; ++i) {
-                FrameData& frame = _frames[i];
-                // destroying their parent pool will destroy all of the command buffers allocated from it
-                vkDestroyCommandPool(_device, frame._command_pool, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (int i = 0; i < FRAME_OVERLAP; ++i) {
+            FrameData &frame = _frames[i];
+            // destroying their parent pool will destroy all of the command buffers allocated from
+            // it
+            vkDestroyCommandPool(_device, frame._command_pool, nullptr);
         }
-    );
+    });
 }
 
-FrameData& RTApp::get_current_frame() {
+FrameData &RTApp::get_current_frame() {
     return _frames[get_current_frame_idx()];
 }
 
@@ -1177,7 +1178,7 @@ uint32_t RTApp::get_current_frame_idx() const {
 void RTApp::basic_clean_up() {
     if (_is_initialized) {
         for (int i = 0; i < FRAME_OVERLAP; ++i) {
-            FrameData& frame = _frames[i];
+            FrameData &frame = _frames[i];
             VK_CHECK(vkWaitForFences(_device, 1, &frame._render_fence, true, 1'000'000'000));
         }
         VK_CHECK(vkDeviceWaitIdle(_device));
@@ -1190,17 +1191,17 @@ uint32_t RTApp::get_min_acceleration_structure_scratch_offset_alignment() {
     return _as_property.minAccelerationStructureScratchOffsetAlignment;
 }
 
-
-void RTApp::add_to_deletion_queue(std::function<void()>&& function) {
+void RTApp::add_to_deletion_queue(std::function<void()> &&function) {
     _main_deletion_queue.push_function(std::move(function));
 }
 
-void RTApp::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function) {
+void RTApp::immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function) {
     VkCommandBuffer cmd = _upload_context._command_buffer;
     vkResetCommandPool(_device, _upload_context._command_pool, 0);
 
     // recording
-    VkCommandBufferBeginInfo cmd_begin_info = vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+    VkCommandBufferBeginInfo cmd_begin_info =
+        vkinit::command_buffer_begin_info(VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
     VK_CHECK(vkBeginCommandBuffer(cmd, &cmd_begin_info));
 
     // excecute
@@ -1209,7 +1210,7 @@ void RTApp::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function
     VK_CHECK(vkEndCommandBuffer(cmd));
 
     // submit (run immediately)
-    VkFence& fence = _upload_context._upload_fence;
+    VkFence &fence = _upload_context._upload_fence;
 
     VkSubmitInfo submit_info = vkinit::submit_info(&cmd);
     VK_CHECK(vkQueueSubmit(_graphics_queue, 1, &submit_info, fence));
@@ -1218,19 +1219,13 @@ void RTApp::immediate_submit(std::function<void(VkCommandBuffer cmd)>&& function
     vkResetFences(_device, 1, &fence);
 }
 
-void RTApp::create_window(const char* name, uint32_t width, uint32_t height) {
-    // We initialize SDL and create a window with it. 
+void RTApp::create_window(const char *name, uint32_t width, uint32_t height) {
+    // We initialize SDL and create a window with it.
     SDL_Init(SDL_INIT_VIDEO);
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_VULKAN);
 
-    _window = SDL_CreateWindow(
-        name,
-        SDL_WINDOWPOS_CENTERED,
-        SDL_WINDOWPOS_CENTERED,
-        _window_extent.width,
-        _window_extent.height,
-        window_flags
-    );
+    _window = SDL_CreateWindow(name, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                               _window_extent.width, _window_extent.height, window_flags);
 }
 
 void RTApp::init_commands() {
@@ -1238,63 +1233,57 @@ void RTApp::init_commands() {
 
     // immediately execute
     VkCommandPoolCreateInfo upload_cmd_pool_info = vkinit::command_pool_create_info(
-        _graphics_queue_family,
-        VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT
-    );
-    VK_CHECK(vkCreateCommandPool(_device, &upload_cmd_pool_info, nullptr, &_upload_context._command_pool));
-    VkCommandBufferAllocateInfo upload_cmd_alloc_info = vkinit::command_buffer_allocate_info(_upload_context._command_pool);
-    VK_CHECK(vkAllocateCommandBuffers(_device, &upload_cmd_alloc_info, &_upload_context._command_buffer));
+        _graphics_queue_family, VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT);
+    VK_CHECK(vkCreateCommandPool(_device, &upload_cmd_pool_info, nullptr,
+                                 &_upload_context._command_pool));
+    VkCommandBufferAllocateInfo upload_cmd_alloc_info =
+        vkinit::command_buffer_allocate_info(_upload_context._command_pool);
+    VK_CHECK(vkAllocateCommandBuffers(_device, &upload_cmd_alloc_info,
+                                      &_upload_context._command_buffer));
 
     _main_deletion_queue.push_function(
-        [&]() {
-            vkDestroyCommandPool(_device, _upload_context._command_pool, nullptr);
-        }
-    );
+        [&]() { vkDestroyCommandPool(_device, _upload_context._command_pool, nullptr); });
 }
 
 void RTApp::init_offscreen_image() {
-    VkExtent3D image_extent = {
-        _window_extent.width,
-        _window_extent.height,
-        1
-    };
+    VkExtent3D image_extent = {_window_extent.width, _window_extent.height, 1};
 
     _offscreen_image.resize(2);
     std::vector<VkImageUsageFlags> usage_flags = {
-        { VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT },
-        { VK_IMAGE_USAGE_STORAGE_BIT }
-    };
+        {VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT},
+        {VK_IMAGE_USAGE_STORAGE_BIT}};
 
     // high precision for storage buffer
-    std::vector<VkFormat> formats = { _swapchain_image_format, VK_FORMAT_R32G32B32A32_SFLOAT };
+    std::vector<VkFormat> formats = {_swapchain_image_format, VK_FORMAT_R32G32B32A32_SFLOAT};
 
     for (int i = 0; i < _offscreen_image.size(); ++i) {
-        FrameBufferAttachment& attach = _offscreen_image[i];
-        AllocatedImage& image = attach._image;
+        FrameBufferAttachment &attach = _offscreen_image[i];
+        AllocatedImage &image = attach._image;
         attach._format = formats[i];
 
-        VkImageCreateInfo image_info = vkinit::image_create_info(attach._format, usage_flags[i], image_extent);
+        VkImageCreateInfo image_info =
+            vkinit::image_create_info(attach._format, usage_flags[i], image_extent);
         image_info.tiling = VK_IMAGE_TILING_OPTIMAL;
 
         VmaAllocationCreateInfo alloc_info = {};
         // only in GPU
         alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
         alloc_info.requiredFlags = VkMemoryPropertyFlags(VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image, &image._allocation, nullptr));
+        VK_CHECK(vmaCreateImage(_allocator, &image_info, &alloc_info, &image._image,
+                                &image._allocation, nullptr));
 
         VkImageAspectFlags aspect_mask = VK_IMAGE_ASPECT_COLOR_BIT;
-        VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(attach._format, image._image, aspect_mask);
+        VkImageViewCreateInfo image_view_info =
+            vkinit::image_view_create_info(attach._format, image._image, aspect_mask);
         VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &attach._image_view));
 
-        _main_deletion_queue.push_function(
-            [=]() {
-                FrameBufferAttachment& attach = _offscreen_image[i];
-                AllocatedImage& image = attach._image;
+        _main_deletion_queue.push_function([=]() {
+            FrameBufferAttachment &attach = _offscreen_image[i];
+            AllocatedImage &image = attach._image;
 
-                vkDestroyImageView(_device, attach._image_view, nullptr);
-                vmaDestroyImage(_allocator, image._image, image._allocation);
-            }
-        );
+            vkDestroyImageView(_device, attach._image_view, nullptr);
+            vmaDestroyImage(_allocator, image._image, image._allocation);
+        });
     }
 }
 
@@ -1303,29 +1292,28 @@ void RTApp::init_framebuffers_for_imgui() {
 
     // create the framebuffers for the swapchain images.
     // This will connect the render-pass to the images for rendering
-    VkFramebufferCreateInfo fb_info = vkinit::framebuffer_create_info(_render_pass_for_imgui, _window_extent);
+    VkFramebufferCreateInfo fb_info =
+        vkinit::framebuffer_create_info(_render_pass_for_imgui, _window_extent);
 
     // grab how many images we have in the swapchain
     _framebuffers_for_imgui = std::vector<VkFramebuffer>(swapchain_image_count);
 
     // create framebuffers for each of the swapchain image views
     for (uint32_t i = 0; i < swapchain_image_count; ++i) {
-        VkImageView& image_view = _swapchain_image_views[i];
+        VkImageView &image_view = _swapchain_image_views[i];
 
         fb_info.attachmentCount = 1;
         fb_info.pAttachments = &image_view;
 
-        VkFramebuffer& framebuffer = _framebuffers_for_imgui[i];
+        VkFramebuffer &framebuffer = _framebuffers_for_imgui[i];
         VK_CHECK(vkCreateFramebuffer(_device, &fb_info, nullptr, &framebuffer));
     }
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            for (VkFramebuffer& framebuffer : _framebuffers_for_imgui) {
-                vkDestroyFramebuffer(_device, framebuffer, nullptr);
-            }
+    _main_deletion_queue.push_function([&]() {
+        for (VkFramebuffer &framebuffer: _framebuffers_for_imgui) {
+            vkDestroyFramebuffer(_device, framebuffer, nullptr);
         }
-    );
+    });
 }
 
 void RTApp::init_pipeline() {
@@ -1333,29 +1321,29 @@ void RTApp::init_pipeline() {
     VkShaderModule ray_gen_shader = Shader::load_shader_module(_device, "rt/ray_gen.rgen.bin");
     VkShaderModule ray_chit_shader = Shader::load_shader_module(_device, "rt/ray_chit.rchit.bin");
     VkShaderModule ray_miss_shader = Shader::load_shader_module(_device, "rt/ray_miss.rmiss.bin");
-    VkShaderModule shadow_chit_shader = Shader::load_shader_module(_device, "rt/shadow_ray_chit.rchit.bin");
-    VkShaderModule shadow_miss_shader = Shader::load_shader_module(_device, "rt/shadow_ray_miss.rmiss.bin");
+    VkShaderModule shadow_chit_shader =
+        Shader::load_shader_module(_device, "rt/shadow_ray_chit.rchit.bin");
+    VkShaderModule shadow_miss_shader =
+        Shader::load_shader_module(_device, "rt/shadow_ray_miss.rmiss.bin");
 
-    _SBT.initialize(2, 2, _rt_properties.shaderGroupHandleSize, _rt_properties.shaderGroupBaseAlignment);
-    _SBT.set_raygen_stage(vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_RAYGEN_BIT_KHR, ray_gen_shader));
+    _SBT.initialize(2, 2, _rt_properties.shaderGroupHandleSize,
+                    _rt_properties.shaderGroupBaseAlignment);
+    _SBT.set_raygen_stage(
+        vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_RAYGEN_BIT_KHR, ray_gen_shader));
 
-    _SBT.add_stage_to_hit_groups(
-        { vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, ray_chit_shader) },
-        SWS_PRIMARY_HIT_SHADERS_IDX
-    );
-    _SBT.add_stage_to_hit_groups(
-        { vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shadow_chit_shader) },
-        SWS_SHADOW_HIT_SHADERS_IDX
-    );
+    _SBT.add_stage_to_hit_groups({vkinit::pipeline_shader_stage_create_info(
+                                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, ray_chit_shader)},
+                                 SWS_PRIMARY_HIT_SHADERS_IDX);
+    _SBT.add_stage_to_hit_groups({vkinit::pipeline_shader_stage_create_info(
+                                     VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR, shadow_chit_shader)},
+                                 SWS_SHADOW_HIT_SHADERS_IDX);
 
     _SBT.add_stage_to_miss_groups(
         vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_MISS_BIT_KHR, ray_miss_shader),
-        SWS_PRIMARY_MISS_SHADERS_IDX
-    );
+        SWS_PRIMARY_MISS_SHADERS_IDX);
     _SBT.add_stage_to_miss_groups(
         vkinit::pipeline_shader_stage_create_info(VK_SHADER_STAGE_MISS_BIT_KHR, shadow_miss_shader),
-        SWS_SHADOW_MISS_SHADERS_IDX
-    );
+        SWS_SHADOW_MISS_SHADERS_IDX);
 
     // 2. pipeline-layout
     VkPipelineLayoutCreateInfo pipeline_layout_info = vkinit::pipeline_layout_create_info();
@@ -1364,15 +1352,18 @@ void RTApp::init_pipeline() {
     VK_CHECK(vkCreatePipelineLayout(_device, &pipeline_layout_info, nullptr, &_rt_pipeline_layout));
 
     // 3. pipeline
-    VkRayTracingPipelineCreateInfoKHR rt_pipeline_info = { VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR, nullptr };
+    VkRayTracingPipelineCreateInfoKHR rt_pipeline_info = {
+        VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR, nullptr};
     rt_pipeline_info.stageCount = _SBT.get_num_stages();
     rt_pipeline_info.pStages = _SBT.get_stages();
     rt_pipeline_info.groupCount = _SBT.get_num_groups();
     rt_pipeline_info.pGroups = _SBT.get_groups();
-    rt_pipeline_info.maxPipelineRayRecursionDepth = 1; // TODO
+    rt_pipeline_info.maxPipelineRayRecursionDepth = 1;  // TODO
     rt_pipeline_info.layout = _rt_pipeline_layout;
 
-    VK_CHECK(_loader_manager->vkCreateRayTracingPipelinesKHR(_device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &rt_pipeline_info, VK_NULL_HANDLE, &_rt_pipeline));
+    VK_CHECK(_loader_manager->vkCreateRayTracingPipelinesKHR(_device, VK_NULL_HANDLE,
+                                                             VK_NULL_HANDLE, 1, &rt_pipeline_info,
+                                                             VK_NULL_HANDLE, &_rt_pipeline));
 
     // 4. shader binding table
     create_SBT();
@@ -1384,28 +1375,29 @@ void RTApp::init_pipeline() {
     vkDestroyShaderModule(_device, shadow_chit_shader, nullptr);
     vkDestroyShaderModule(_device, shadow_miss_shader, nullptr);
 
-    _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroyPipeline(_device, _rt_pipeline, nullptr);
-            vkDestroyPipelineLayout(_device, _rt_pipeline_layout, nullptr);
-        }
-    );
+    _main_deletion_queue.push_function([=]() {
+        vkDestroyPipeline(_device, _rt_pipeline, nullptr);
+        vkDestroyPipelineLayout(_device, _rt_pipeline_layout, nullptr);
+    });
 }
 
 void RTApp::create_SBT() {
     std::vector<unsigned char> group_handles(_SBT.get_num_groups() * _SBT.get_shader_handle_size());
-    VK_CHECK(_loader_manager->vkGetRayTracingShaderGroupHandlesKHR(_device, _rt_pipeline, 0, _SBT.get_num_groups(), group_handles.size(), group_handles.data()));
+    VK_CHECK(_loader_manager->vkGetRayTracingShaderGroupHandlesKHR(
+        _device, _rt_pipeline, 0, _SBT.get_num_groups(), group_handles.size(),
+        group_handles.data()));
 
     const uint32_t buffer_size = _SBT.get_SBT_size();
 
     // CPU Buffer ( for staging )
-    AllocatedBuffer staging_buffer = rt_utils::create_buffer(_allocator, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    AllocatedBuffer staging_buffer = rt_utils::create_buffer(
+        _allocator, buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
     // copy to CPU buffer
     {
-        void* data;
+        void *data;
         vmaMapMemory(_allocator, staging_buffer._allocation, &data);
-        uint8_t* data_char = static_cast<uint8_t*>(data);
+        uint8_t *data_char = static_cast<uint8_t *>(data);
         const uint32_t group_num = _SBT.get_num_groups();
         const uint32_t shader_group_alignment = _SBT.get_shader_group_alignment();
         const uint32_t shader_handle_size = _SBT.get_shader_handle_size();
@@ -1417,46 +1409,42 @@ void RTApp::create_SBT() {
     }
     // GPU buffer
     // creates a new VkBuffer, allocates and binds memory for it.
-    AllocatedBuffer dst_buffer = rt_utils::create_buffer(_allocator,
-        buffer_size,
+    AllocatedBuffer dst_buffer = rt_utils::create_buffer(
+        _allocator, buffer_size,
         // TODO: why use this bit "VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT"
-        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VMA_MEMORY_USAGE_GPU_ONLY
-    );
+        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VMA_MEMORY_USAGE_GPU_ONLY);
 
     // do transfer immediately
-    immediate_submit(
-        [=](VkCommandBuffer cmd) {
-            VkBufferCopy copy = {};
-            copy.srcOffset = 0;
-            copy.dstOffset = 0;
-            copy.size = buffer_size;
-            vkCmdCopyBuffer(cmd, staging_buffer._buffer, dst_buffer._buffer, 1, &copy);
-        }
-    );
+    immediate_submit([=](VkCommandBuffer cmd) {
+        VkBufferCopy copy = {};
+        copy.srcOffset = 0;
+        copy.dstOffset = 0;
+        copy.size = buffer_size;
+        vkCmdCopyBuffer(cmd, staging_buffer._buffer, dst_buffer._buffer, 1, &copy);
+    });
 
     _SBT.set_SBT(dst_buffer);
     vmaDestroyBuffer(_allocator, staging_buffer._buffer, staging_buffer._allocation);
 
     _main_deletion_queue.push_function(
-        [=]() {
-            vmaDestroyBuffer(_allocator, dst_buffer._buffer, dst_buffer._allocation);
-        }
-    );
+        [=]() { vmaDestroyBuffer(_allocator, dst_buffer._buffer, dst_buffer._allocation); });
 }
 
 void RTApp::init_scenes() {
-    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
-    // mCamera.SetViewPlanes(0.1f, 100.0f);
+    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width),
+    // static_cast<int>(_window_extent.height) }); mCamera.SetViewPlanes(0.1f, 100.0f);
     // mCamera.SetFovY(45.0f);
     // mCamera.LookAt(vec3(0.577f,0.791f,0.744f), vec3(0.081f,1.257f,0.011f));
 
-    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
-    // mCamera.SetViewPlanes(0.1f, 100.0f);
+    // mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width),
+    // static_cast<int>(_window_extent.height) }); mCamera.SetViewPlanes(0.1f, 100.0f);
     // mCamera.SetFovY(45.0f);
     // mCamera.LookAt(vec3(0.546f, 0.662f, 2.262f), vec3(0.499f, 0.596f, 1.265f));
 
-    mCamera.SetViewport({ 0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height) });
+    mCamera.SetViewport(
+        {0, 0, static_cast<int>(_window_extent.width), static_cast<int>(_window_extent.height)});
     mCamera.SetViewPlanes(0.1f, 100.0f);
     mCamera.SetFovY(45.0f);
     mCamera.LookAt(vec3(0.506f, 0.761f, 0.978f), vec3(0.419f, 0.834f, -0.016f));
@@ -1466,8 +1454,8 @@ void RTApp::init_scenes() {
     _mirror_id = 13;
 
     _disney_param._id = 8;
-    Disney& disney = _disney_param._disney;
-    disney._base_color = vec3(0.357798f, 0.603660f, 0.640000f); // the same as the plane
+    Disney &disney = _disney_param._disney;
+    disney._base_color = vec3(0.357798f, 0.603660f, 0.640000f);  // the same as the plane
     disney._roughness = 0.8f;
     disney._subsurface = 0.5f;
     disney._anisotropic = 0.8f;
@@ -1483,15 +1471,15 @@ void RTApp::init_scenes() {
     disney._specular = 0.5f;
 
     // load scenes
-    //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox-sphere.obj");
-    //std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox.obj");
-    std::string path = std::string(ASSETS_DIRECTORY"/bear/bear_box-2.obj");
+    // std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox-sphere.obj");
+    // std::string path = std::string(ASSETS_DIRECTORY"/cbox/cbox.obj");
+    std::string path = std::string(ASSETS_DIRECTORY "/bear/bear_box-2.obj");
 
     // 1. tinyobj loading(upload the buffer to GPU when loading)
-    tinyobj::attrib_t attrib;                       // vertex
-    std::vector<tinyobj::shape_t> shapes;           // objects
-    std::vector<tinyobj::material_t> materials;     // materials
-    std::string warn, err;                          // loading info
+    tinyobj::attrib_t attrib;                    // vertex
+    std::vector<tinyobj::shape_t> shapes;        // objects
+    std::vector<tinyobj::material_t> materials;  // materials
+    std::string warn, err;                       // loading info
 
     // assume the *.mtl file is in the same dir
     std::string base_dir = std::string(path);
@@ -1505,7 +1493,8 @@ void RTApp::init_scenes() {
     }
 
     // trianglulate = true by default
-    tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str(), base_dir.c_str(), true);
+    tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path.c_str(), base_dir.c_str(),
+                     true);
     if (!warn.empty()) {
         std::cout << "[Obj Loading] " << path << ", Warning: " << warn << std::endl;
     }
@@ -1518,18 +1507,25 @@ void RTApp::init_scenes() {
 
     // get aabb
     const float inf = 1e5;
-    Interval3D aabb = { inf,-inf, inf,-inf, inf,-inf, };
+    Interval3D aabb = {
+        inf,
+        -inf,
+        inf,
+        -inf,
+        inf,
+        -inf,
+    };
     for (size_t mesh_idx = 0; mesh_idx < shapes.size(); ++mesh_idx) {
         size_t vertex_idx = 0;
-        RTMesh& mesh = _rt_scene._meshes[mesh_idx];
-        const tinyobj::shape_t& shape = shapes[mesh_idx];
+        RTMesh &mesh = _rt_scene._meshes[mesh_idx];
+        const tinyobj::shape_t &shape = shapes[mesh_idx];
         const size_t num_faces = shape.mesh.num_face_vertices.size();
         const size_t num_vertices = num_faces * 3;
         for (size_t f = 0; f < num_faces; ++f) {
-            assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
+            assert(shape.mesh.num_face_vertices[f] == 3);  // triangulate
 
             for (size_t j = 0; j < 3; ++j, ++vertex_idx) {
-                const tinyobj::index_t& i = shape.mesh.indices[vertex_idx];
+                const tinyobj::index_t &i = shape.mesh.indices[vertex_idx];
                 vec3 pos;
                 pos.x = attrib.vertices[3 * i.vertex_index + 0];
                 pos.y = attrib.vertices[3 * i.vertex_index + 1];
@@ -1546,8 +1542,8 @@ void RTApp::init_scenes() {
 
     // upload
     for (size_t mesh_idx = 0; mesh_idx < shapes.size(); ++mesh_idx) {
-        RTMesh& mesh = _rt_scene._meshes[mesh_idx];
-        const tinyobj::shape_t& shape = shapes[mesh_idx];
+        RTMesh &mesh = _rt_scene._meshes[mesh_idx];
+        const tinyobj::shape_t &shape = shapes[mesh_idx];
 
         const size_t num_faces = shape.mesh.num_face_vertices.size();
         const size_t num_vertices = num_faces * 3;
@@ -1564,10 +1560,14 @@ void RTApp::init_scenes() {
         // (1) create staging buffer
         const int BUFFER_KIND = 5;
         std::vector<AllocatedBuffer> staging_buffers(BUFFER_KIND);
-        std::vector<void*> datas(BUFFER_KIND);
-        std::vector<size_t> staging_buffer_size{ positions_buffer_size, indices_buffer_size, faces_buffer_size, attribs_buffer_size, mat_IDs_buffer_size };
+        std::vector<void *> datas(BUFFER_KIND);
+        std::vector<size_t> staging_buffer_size{positions_buffer_size, indices_buffer_size,
+                                                faces_buffer_size, attribs_buffer_size,
+                                                mat_IDs_buffer_size};
         for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
-            staging_buffers[buffer_idx] = rt_utils::create_buffer(_allocator, staging_buffer_size[buffer_idx], VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+            staging_buffers[buffer_idx] = rt_utils::create_buffer(
+                _allocator, staging_buffer_size[buffer_idx], VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                VMA_MEMORY_USAGE_CPU_ONLY);
         }
 
         // (2) write to staging buffer
@@ -1575,14 +1575,14 @@ void RTApp::init_scenes() {
         for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
             vmaMapMemory(_allocator, staging_buffers[buffer_idx]._allocation, &datas[buffer_idx]);
         }
-        vec3* data_positions = reinterpret_cast<vec3*>(datas[0]);
-        uint32_t* data_indices = reinterpret_cast<uint32_t*>(datas[1]);
-        uint32_t* data_faces = reinterpret_cast<uint32_t*>(datas[2]);
-        VertexAttribute* data_attribs = reinterpret_cast<VertexAttribute*>(datas[3]);
-        uint32_t* data_mat_IDs = reinterpret_cast<uint32_t*>(datas[4]);
+        vec3 *data_positions = reinterpret_cast<vec3 *>(datas[0]);
+        uint32_t *data_indices = reinterpret_cast<uint32_t *>(datas[1]);
+        uint32_t *data_faces = reinterpret_cast<uint32_t *>(datas[2]);
+        VertexAttribute *data_attribs = reinterpret_cast<VertexAttribute *>(datas[3]);
+        uint32_t *data_mat_IDs = reinterpret_cast<uint32_t *>(datas[4]);
 
         // calculate the vertex nomal
-        std::vector < std::vector<vec3> > vertex_normals;
+        std::vector<std::vector<vec3>> vertex_normals;
         uint32_t vertex_normals_size = attrib.vertices.size() / 3 + 1;
         vertex_normals.resize(vertex_normals_size);
         for (uint32_t vn_idx = 0; vn_idx < vertex_normals_size; ++vn_idx) {
@@ -1591,13 +1591,13 @@ void RTApp::init_scenes() {
 
         size_t vertex_idx = 0;
         for (size_t f = 0; f < num_faces; ++f) {
-            assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
+            assert(shape.mesh.num_face_vertices[f] == 3);  // triangulate
             vec3 pos_for_normal[3];
             uint32_t idx_for_vertex[3];
             for (size_t j = 0; j < 3; ++j, ++vertex_idx) {
-                const tinyobj::index_t& i = shape.mesh.indices[vertex_idx];
+                const tinyobj::index_t &i = shape.mesh.indices[vertex_idx];
                 idx_for_vertex[j] = i.vertex_index;
-                vec3& pos = pos_for_normal[j];
+                vec3 &pos = pos_for_normal[j];
                 pos.x = attrib.vertices[3 * i.vertex_index + 0];
                 pos.y = attrib.vertices[3 * i.vertex_index + 1];
                 pos.z = attrib.vertices[3 * i.vertex_index + 2];
@@ -1615,11 +1615,13 @@ void RTApp::init_scenes() {
         }
 
         for (uint32_t vn_idx = 0; vn_idx < vertex_normals_size; ++vn_idx) {
-            auto& normals = vertex_normals[vn_idx];
+            auto &normals = vertex_normals[vn_idx];
             // won't be used
-            if (normals.size() == 0) { continue; }
+            if (normals.size() == 0) {
+                continue;
+            }
             vec3 normal_sum = vec3(0.0f);
-            for (vec3& nor : normals) {
+            for (vec3 &nor: normals) {
                 normal_sum += nor;
             }
             normal_sum /= normals.size();
@@ -1629,14 +1631,14 @@ void RTApp::init_scenes() {
 
         vertex_idx = 0;
         for (size_t f = 0; f < num_faces; ++f) {
-            assert(shape.mesh.num_face_vertices[f] == 3); // triangulate
+            assert(shape.mesh.num_face_vertices[f] == 3);  // triangulate
 
             for (size_t j = 0; j < 3; ++j, ++vertex_idx) {
-                const tinyobj::index_t& i = shape.mesh.indices[vertex_idx];
+                const tinyobj::index_t &i = shape.mesh.indices[vertex_idx];
 
-                vec3& pos = data_positions[vertex_idx];
-                vec4& normal = data_attribs[vertex_idx].normal;
-                vec4& uv = data_attribs[vertex_idx].uv;
+                vec3 &pos = data_positions[vertex_idx];
+                vec4 &normal = data_attribs[vertex_idx].normal;
+                vec4 &uv = data_attribs[vertex_idx].uv;
 
                 pos.x = attrib.vertices[3 * i.vertex_index + 0];
                 pos.y = attrib.vertices[3 * i.vertex_index + 1];
@@ -1683,23 +1685,28 @@ void RTApp::init_scenes() {
 
         // (3) create GPU buffer
         VkBufferUsageFlags basic_flags =
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
             VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
 
-        mesh._positions = rt_utils::create_buffer(_allocator, positions_buffer_size, basic_flags | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-        mesh._indices = rt_utils::create_buffer(_allocator, indices_buffer_size, basic_flags | VK_BUFFER_USAGE_INDEX_BUFFER_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh._positions = rt_utils::create_buffer(_allocator, positions_buffer_size,
+                                                  basic_flags | VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                                                  VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh._indices = rt_utils::create_buffer(_allocator, indices_buffer_size,
+                                                basic_flags | VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                                                VMA_MEMORY_USAGE_GPU_ONLY);
 
-        basic_flags =
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
-            VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+        basic_flags = VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
-        mesh._faces = rt_utils::create_buffer(_allocator, faces_buffer_size, basic_flags, VMA_MEMORY_USAGE_GPU_ONLY);
-        mesh._attribs = rt_utils::create_buffer(_allocator, attribs_buffer_size, basic_flags, VMA_MEMORY_USAGE_GPU_ONLY);
-        mesh._mat_IDs = rt_utils::create_buffer(_allocator, mat_IDs_buffer_size, basic_flags, VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh._faces = rt_utils::create_buffer(_allocator, faces_buffer_size, basic_flags,
+                                              VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh._attribs = rt_utils::create_buffer(_allocator, attribs_buffer_size, basic_flags,
+                                                VMA_MEMORY_USAGE_GPU_ONLY);
+        mesh._mat_IDs = rt_utils::create_buffer(_allocator, mat_IDs_buffer_size, basic_flags,
+                                                VMA_MEMORY_USAGE_GPU_ONLY);
 
-        const std::vector<AllocatedBuffer> target_buffer = { mesh._positions, mesh._indices, mesh._faces, mesh._attribs, mesh._mat_IDs };
+        const std::vector<AllocatedBuffer> target_buffer = {
+            mesh._positions, mesh._indices, mesh._faces, mesh._attribs, mesh._mat_IDs};
 
         // (4) upload to GPU
         // TODO: multi mesh in one call
@@ -1711,125 +1718,127 @@ void RTApp::init_scenes() {
                 copy.dstOffset = 0;
                 for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
                     copy.size = staging_buffer_size[buffer_idx];
-                    vkCmdCopyBuffer(cmd, staging_buffers[buffer_idx]._buffer, target_buffer[buffer_idx]._buffer, 1, &copy);
+                    vkCmdCopyBuffer(cmd, staging_buffers[buffer_idx]._buffer,
+                                    target_buffer[buffer_idx]._buffer, 1, &copy);
                 }
-            }
-        );
+            });
 
         // (5) clean staing buffer
         for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
-            const AllocatedBuffer& buffer = staging_buffers[buffer_idx];
+            const AllocatedBuffer &buffer = staging_buffers[buffer_idx];
             vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
         }
 
-        _main_deletion_queue.push_function(
-            [=]() {
-                for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
-                    const AllocatedBuffer& buffer = target_buffer[buffer_idx];
-                    vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
-                }
+        _main_deletion_queue.push_function([=]() {
+            for (int buffer_idx = 0; buffer_idx < BUFFER_KIND; ++buffer_idx) {
+                const AllocatedBuffer &buffer = target_buffer[buffer_idx];
+                vmaDestroyBuffer(_allocator, buffer._buffer, buffer._allocation);
             }
-        );
+        });
 
         // (6) image data(the same process)
         // TODO: !!!IMPORTANT!!! should deal with the materials is lost situation
         std::vector<int> erase_materials{};
         for (size_t i = 0; i < materials.size(); ++i) {
-            const tinyobj::material_t& src_mat = materials[i];
-            RTMaterial& dst_mat = _rt_scene._materials[i];
+            const tinyobj::material_t &src_mat = materials[i];
+            RTMaterial &dst_mat = _rt_scene._materials[i];
             std::string full_texture_path = base_dir + "/" + src_mat.diffuse_texname;
 
             // load
             int width, height, channels;
-            stbi_uc* pixels = stbi_load(full_texture_path.c_str(), &width, &height, &channels, STBI_rgb_alpha); // force RGBA
+            stbi_uc *pixels = stbi_load(full_texture_path.c_str(), &width, &height, &channels,
+                                        STBI_rgb_alpha);  // force RGBA
             if (!pixels) {
                 std::cout << "[Image]: Failed to load " << full_texture_path << std::endl;
                 erase_materials.push_back(i);
                 continue;
             }
-            int image_size = width * height * 4; // RGBA
+            int image_size = width * height * 4;  // RGBA
 
             // upload to staging buffer
             const VkFormat IMAGE_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
-            AllocatedBuffer staging_buffer = rt_utils::create_buffer(_allocator, image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+            AllocatedBuffer staging_buffer =
+                rt_utils::create_buffer(_allocator, image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                        VMA_MEMORY_USAGE_CPU_ONLY);
 
-            void* data;
+            void *data;
             vmaMapMemory(_allocator, staging_buffer._allocation, &data);
             memcpy(data, pixels, image_size);
             vmaUnmapMemory(_allocator, staging_buffer._allocation);
             stbi_image_free(pixels);
 
             // create VkImage
-            VkExtent3D image_extent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1 };
+            VkExtent3D image_extent{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
             VkImageCreateInfo image_create_info = vkinit::image_create_info(
-                IMAGE_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, image_extent
-            );
+                IMAGE_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+                image_extent);
 
             VmaAllocationCreateInfo image_alloc_info = {};
             image_alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-            AllocatedImage& image = dst_mat._texture;
-            VK_CHECK(vmaCreateImage(_allocator, &image_create_info, &image_alloc_info, &image._image, &image._allocation, nullptr));
+            AllocatedImage &image = dst_mat._texture;
+            VK_CHECK(vmaCreateImage(_allocator, &image_create_info, &image_alloc_info,
+                                    &image._image, &image._allocation, nullptr));
 
             // layout transform
-            immediate_submit(
-                [&](VkCommandBuffer cmd) {
-                    // set barrier
-                    VkImageSubresourceRange range = {};
-                    range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    range.baseMipLevel = 0;
-                    range.levelCount = 1;
-                    range.baseArrayLayer = 0;
-                    range.layerCount = 1;
+            immediate_submit([&](VkCommandBuffer cmd) {
+                // set barrier
+                VkImageSubresourceRange range = {};
+                range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                range.baseMipLevel = 0;
+                range.levelCount = 1;
+                range.baseArrayLayer = 0;
+                range.layerCount = 1;
 
-                    VkImageMemoryBarrier image_barrier_to_transfer = vkinit::image_memory_barrier(
-                        image._image, range,
-                        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // for transfer
-                        0, VK_ACCESS_TRANSFER_WRITE_BIT
-                    );
-                    // https://gpuopen.com/learn/vulkan-barriers-explained/
-                    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier_to_transfer);
+                VkImageMemoryBarrier image_barrier_to_transfer = vkinit::image_memory_barrier(
+                    image._image, range, VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,  // for transfer
+                    0, VK_ACCESS_TRANSFER_WRITE_BIT);
+                // https://gpuopen.com/learn/vulkan-barriers-explained/
+                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                                     VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                                     &image_barrier_to_transfer);
 
-                    // copy
-                    VkBufferImageCopy copy = {};
-                    copy.bufferOffset = 0;
-                    copy.bufferRowLength = 0;
-                    copy.bufferImageHeight = 0;
+                // copy
+                VkBufferImageCopy copy = {};
+                copy.bufferOffset = 0;
+                copy.bufferRowLength = 0;
+                copy.bufferImageHeight = 0;
 
-                    copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-                    copy.imageSubresource.baseArrayLayer = 0;
-                    copy.imageSubresource.layerCount = 1;
-                    copy.imageSubresource.mipLevel = 0;
+                copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+                copy.imageSubresource.baseArrayLayer = 0;
+                copy.imageSubresource.layerCount = 1;
+                copy.imageSubresource.mipLevel = 0;
 
-                    copy.imageExtent = image_extent;
+                copy.imageExtent = image_extent;
 
-                    vkCmdCopyBufferToImage(cmd, staging_buffer._buffer, image._image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+                vkCmdCopyBufferToImage(cmd, staging_buffer._buffer, image._image,
+                                       VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-                    // transfer the layout to be shader readable
-                    VkImageMemoryBarrier image_barrier_to_readable = vkinit::image_memory_barrier(
-                        image._image, range,
-                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT
-                    );
-                    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier_to_readable);
-                }
-            );
+                // transfer the layout to be shader readable
+                VkImageMemoryBarrier image_barrier_to_readable = vkinit::image_memory_barrier(
+                    image._image, range, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, VK_ACCESS_TRANSFER_WRITE_BIT,
+                    VK_ACCESS_SHADER_READ_BIT);
+                vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                     VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0,
+                                     nullptr, 1, &image_barrier_to_readable);
+            });
 
             // image view
-            VkImageView& image_view = dst_mat._image_view;
-            VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(IMAGE_FORMAT, image._image, VK_IMAGE_ASPECT_COLOR_BIT);
+            VkImageView &image_view = dst_mat._image_view;
+            VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(
+                IMAGE_FORMAT, image._image, VK_IMAGE_ASPECT_COLOR_BIT);
             VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &image_view));
 
             VkSamplerCreateInfo sampler_create_info = vkinit::sampler_create_info(VK_FILTER_LINEAR);
             sampler_create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
             VK_CHECK(vkCreateSampler(_device, &sampler_create_info, nullptr, &dst_mat._sampler));
 
-            _main_deletion_queue.push_function(
-                [=]() {
-                    vkDestroySampler(_device, dst_mat._sampler, nullptr);
-                    vkDestroyImageView(_device, image_view, nullptr);
-                    vmaDestroyImage(_allocator, image._image, image._allocation);
-                }
-            );
+            _main_deletion_queue.push_function([=]() {
+                vkDestroySampler(_device, dst_mat._sampler, nullptr);
+                vkDestroyImageView(_device, image_view, nullptr);
+                vmaDestroyImage(_allocator, image._image, image._allocation);
+            });
 
             // staging buffer
             vmaDestroyBuffer(_allocator, staging_buffer._buffer, staging_buffer._allocation);
@@ -1849,10 +1858,10 @@ void RTApp::init_scenes() {
     _rt_scene._attribs_buffer_infos.resize(num_meshes);
     _rt_scene._faces_buffer_infos.resize(num_meshes);
     for (size_t mesh_idx = 0; mesh_idx < num_meshes; ++mesh_idx) {
-        const RTMesh& mesh = _rt_scene._meshes[mesh_idx];
-        VkDescriptorBufferInfo& mat_IDs_info = _rt_scene._mat_IDs_buffer_infos[mesh_idx];
-        VkDescriptorBufferInfo& attribs_info = _rt_scene._attribs_buffer_infos[mesh_idx];
-        VkDescriptorBufferInfo& faces_info = _rt_scene._faces_buffer_infos[mesh_idx];
+        const RTMesh &mesh = _rt_scene._meshes[mesh_idx];
+        VkDescriptorBufferInfo &mat_IDs_info = _rt_scene._mat_IDs_buffer_infos[mesh_idx];
+        VkDescriptorBufferInfo &attribs_info = _rt_scene._attribs_buffer_infos[mesh_idx];
+        VkDescriptorBufferInfo &faces_info = _rt_scene._faces_buffer_infos[mesh_idx];
 
         mat_IDs_info.buffer = mesh._mat_IDs._buffer;
         mat_IDs_info.offset = 0;
@@ -1868,8 +1877,8 @@ void RTApp::init_scenes() {
     }
     _rt_scene._textures_infos.resize(num_materials);
     for (size_t i = 0; i < num_materials; ++i) {
-        const RTMaterial& mat = _rt_scene._materials[i];
-        VkDescriptorImageInfo& textureInfo = _rt_scene._textures_infos[i];
+        const RTMaterial &mat = _rt_scene._materials[i];
+        VkDescriptorImageInfo &textureInfo = _rt_scene._textures_infos[i];
 
         textureInfo.sampler = mat._sampler;
         textureInfo.imageView = mat._image_view;
@@ -1881,102 +1890,103 @@ void RTApp::init_scenes() {
     _rt_scene.build_blas(_device, _allocator, this);
     _rt_scene.build_tlas(_device, _allocator, this);
 
-    // (3.2) environment map 
+    // (3.2) environment map
 
-    RTMaterial& dst_mat = _env_map;
-    std::string full_texture_path = ASSETS_DIRECTORY"/envs/studio_garden_2k.jpg";
+    RTMaterial &dst_mat = _env_map;
+    std::string full_texture_path = ASSETS_DIRECTORY "/envs/studio_garden_2k.jpg";
 
     // load
     int width, height, channels;
-    stbi_uc* pixels = stbi_load(full_texture_path.c_str(), &width, &height, &channels, STBI_rgb_alpha); // force RGBA
+    stbi_uc *pixels = stbi_load(full_texture_path.c_str(), &width, &height, &channels,
+                                STBI_rgb_alpha);  // force RGBA
     if (!pixels) {
         std::cout << "[Image]: Failed to load " << full_texture_path << std::endl;
     }
 
     assert(pixels != 0);
 
-    int image_size = width * height * 4; // RGBA
+    int image_size = width * height * 4;  // RGBA
 
     // upload to staging buffer
     const VkFormat IMAGE_FORMAT = VK_FORMAT_R8G8B8A8_SRGB;
-    AllocatedBuffer staging_buffer = rt_utils::create_buffer(_allocator, image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+    AllocatedBuffer staging_buffer = rt_utils::create_buffer(
+        _allocator, image_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
-    void* data;
+    void *data;
     vmaMapMemory(_allocator, staging_buffer._allocation, &data);
     memcpy(data, pixels, image_size);
     vmaUnmapMemory(_allocator, staging_buffer._allocation);
     stbi_image_free(pixels);
 
     // create VkImage
-    VkExtent3D image_extent{ static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1 };
+    VkExtent3D image_extent{static_cast<uint32_t>(width), static_cast<uint32_t>(height), 1};
     VkImageCreateInfo image_create_info = vkinit::image_create_info(
-        IMAGE_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, image_extent
-    );
+        IMAGE_FORMAT, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, image_extent);
 
     VmaAllocationCreateInfo image_alloc_info = {};
     image_alloc_info.usage = VMA_MEMORY_USAGE_GPU_ONLY;
-    AllocatedImage& image = dst_mat._texture;
-    VK_CHECK(vmaCreateImage(_allocator, &image_create_info, &image_alloc_info, &image._image, &image._allocation, nullptr));
+    AllocatedImage &image = dst_mat._texture;
+    VK_CHECK(vmaCreateImage(_allocator, &image_create_info, &image_alloc_info, &image._image,
+                            &image._allocation, nullptr));
 
     // layout transform
-    immediate_submit(
-        [&](VkCommandBuffer cmd) {
-            // set barrier
-            VkImageSubresourceRange range = {};
-            range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            range.baseMipLevel = 0;
-            range.levelCount = VK_REMAINING_MIP_LEVELS;
-            range.baseArrayLayer = 0;
-            range.layerCount = VK_REMAINING_ARRAY_LAYERS;
+    immediate_submit([&](VkCommandBuffer cmd) {
+        // set barrier
+        VkImageSubresourceRange range = {};
+        range.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        range.baseMipLevel = 0;
+        range.levelCount = VK_REMAINING_MIP_LEVELS;
+        range.baseArrayLayer = 0;
+        range.layerCount = VK_REMAINING_ARRAY_LAYERS;
 
-            VkImageMemoryBarrier image_barrier_to_transfer = vkinit::image_memory_barrier(
-                image._image, range,
-                VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, // for transfer
-                0, VK_ACCESS_TRANSFER_WRITE_BIT
-            );
-            // https://gpuopen.com/learn/vulkan-barriers-explained/
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier_to_transfer);
+        VkImageMemoryBarrier image_barrier_to_transfer =
+            vkinit::image_memory_barrier(image._image, range, VK_IMAGE_LAYOUT_UNDEFINED,
+                                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,  // for transfer
+                                         0, VK_ACCESS_TRANSFER_WRITE_BIT);
+        // https://gpuopen.com/learn/vulkan-barriers-explained/
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             0, 0, nullptr, 0, nullptr, 1, &image_barrier_to_transfer);
 
-            // copy
-            VkBufferImageCopy copy = {};
-            copy.bufferOffset = 0;
-            copy.bufferRowLength = 0;
-            copy.bufferImageHeight = 0;
+        // copy
+        VkBufferImageCopy copy = {};
+        copy.bufferOffset = 0;
+        copy.bufferRowLength = 0;
+        copy.bufferImageHeight = 0;
 
-            copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-            copy.imageSubresource.baseArrayLayer = 0;
-            copy.imageSubresource.layerCount = 1;
-            copy.imageSubresource.mipLevel = 0;
+        copy.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        copy.imageSubresource.baseArrayLayer = 0;
+        copy.imageSubresource.layerCount = 1;
+        copy.imageSubresource.mipLevel = 0;
 
-            copy.imageExtent = image_extent;
+        copy.imageExtent = image_extent;
 
-            vkCmdCopyBufferToImage(cmd, staging_buffer._buffer, image._image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
+        vkCmdCopyBufferToImage(cmd, staging_buffer._buffer, image._image,
+                               VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
 
-            // transfer the layout to be shader readable
-            VkImageMemoryBarrier image_barrier_to_readable = vkinit::image_memory_barrier(
-                image._image, range,
-                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT
-            );
-            vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1, &image_barrier_to_readable);
-        }
-    );
+        // transfer the layout to be shader readable
+        VkImageMemoryBarrier image_barrier_to_readable =
+            vkinit::image_memory_barrier(image._image, range, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                                         VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                                         VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT);
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                             VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, nullptr, 0, nullptr, 1,
+                             &image_barrier_to_readable);
+    });
 
     // image view & sampler
-    VkImageViewCreateInfo image_view_info = vkinit::image_view_create_info(IMAGE_FORMAT, image._image, VK_IMAGE_ASPECT_COLOR_BIT);
+    VkImageViewCreateInfo image_view_info =
+        vkinit::image_view_create_info(IMAGE_FORMAT, image._image, VK_IMAGE_ASPECT_COLOR_BIT);
     VK_CHECK(vkCreateImageView(_device, &image_view_info, nullptr, &dst_mat._image_view));
 
     VkSamplerCreateInfo sampler_create_info = vkinit::sampler_create_info(VK_FILTER_LINEAR);
     sampler_create_info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
     VK_CHECK(vkCreateSampler(_device, &sampler_create_info, nullptr, &dst_mat._sampler));
 
-    _main_deletion_queue.push_function(
-        [=]() {
-            vkDestroySampler(_device, dst_mat._sampler, nullptr);
-            vkDestroyImageView(_device, dst_mat._image_view, nullptr);
-            vmaDestroyImage(_allocator, image._image, image._allocation);
-        }
-    );
+    _main_deletion_queue.push_function([=]() {
+        vkDestroySampler(_device, dst_mat._sampler, nullptr);
+        vkDestroyImageView(_device, dst_mat._image_view, nullptr);
+        vmaDestroyImage(_allocator, image._image, image._allocation);
+    });
 
     // staging buffer
     vmaDestroyBuffer(_allocator, staging_buffer._buffer, staging_buffer._allocation);
@@ -2029,49 +2039,55 @@ void RTApp::init_descriptors() {
     // SWS_RADIANCE_CACHE_BINDING : 4
     // SWS_STREE_BINDING : 5
     // SWS_DTREE_BINDING : 6
-    _rt_set_layout[SWS_SCENE_AS_SET] = _descriptors.create_set_layout(types0.data(), stages0, types0.size());
+    _rt_set_layout[SWS_SCENE_AS_SET] =
+        _descriptors.create_set_layout(types0.data(), stages0, types0.size());
 
     // Second set:
     //  binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
-    const VkDescriptorBindingFlags flag = VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT; // binding.descriptorCount > 1, must set this flag
-    VkDescriptorSetLayoutBindingFlagsCreateInfo flag1 = { VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO };
+    const VkDescriptorBindingFlags flag =
+        VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT;  // binding.descriptorCount > 1, must
+                                                              // set this flag
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flag1 = {
+        VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO};
     flag1.pBindingFlags = &flag;
     flag1.bindingCount = 1;
 
-    VkDescriptorSetLayoutBindingFlagsCreateInfo flags1[] = { flag1 };
-    VkDescriptorType types1[] = { VK_DESCRIPTOR_TYPE_STORAGE_BUFFER };
-    VkShaderStageFlags stages1[] = { VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR };
-    uint32_t descriptor_count1[] = { num_meshes };
-    _rt_set_layout[SWS_MATIDS_SET] = _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
+    VkDescriptorSetLayoutBindingFlagsCreateInfo flags1[] = {flag1};
+    VkDescriptorType types1[] = {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER};
+    VkShaderStageFlags stages1[] = {VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR};
+    uint32_t descriptor_count1[] = {num_meshes};
+    _rt_set_layout[SWS_MATIDS_SET] =
+        _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
 
     // Third set:
     //  binding 0 (N)  ->  vertex attributes for our meshes  (N = num meshes)
     //   (re-using second's set info)
-    _rt_set_layout[SWS_ATTRIBS_SET] = _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
+    _rt_set_layout[SWS_ATTRIBS_SET] =
+        _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
 
     // Fourth set:
     //  binding 0 (N)  ->  faces info (indices) for our meshes  (N = num meshes)
     //   (re-using second's set info)
-    _rt_set_layout[SWS_FACES_SET] = _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
+    _rt_set_layout[SWS_FACES_SET] =
+        _descriptors.create_set_layout(types1, stages1, 1, descriptor_count1, flags1);
 
     // Fifth set:
     //  binding 0 (N)  ->  textures (N = num materials)
-    VkDescriptorType types5[] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-    VkShaderStageFlags stages5[] = { VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR };
-    uint32_t descriptor_count5[] = { num_materials };
-    _rt_set_layout[SWS_TEXTURES_SET] = _descriptors.create_set_layout(types5, stages5, 1, descriptor_count5);
+    VkDescriptorType types5[] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER};
+    VkShaderStageFlags stages5[] = {VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR};
+    uint32_t descriptor_count5[] = {num_materials};
+    _rt_set_layout[SWS_TEXTURES_SET] =
+        _descriptors.create_set_layout(types5, stages5, 1, descriptor_count5);
 
     // Sixth set:
     //  binding 0 ->  env texture
-    VkDescriptorType types6[] = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER };
-    VkShaderStageFlags stages6[] = { VK_SHADER_STAGE_MISS_BIT_KHR | VK_SHADER_STAGE_RAYGEN_BIT_KHR }; // TODO: 00000000 remove this stage
+    VkDescriptorType types6[] = {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER};
+    VkShaderStageFlags stages6[] = {VK_SHADER_STAGE_MISS_BIT_KHR |
+                                    VK_SHADER_STAGE_RAYGEN_BIT_KHR};  // TODO: 00000000 remove this
+                                                                      // stage
     _rt_set_layout[SWS_ENVS_SET] = _descriptors.create_set_layout(types6, stages6, 1);
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            _descriptors.destroy();
-        }
-    );
+    _main_deletion_queue.push_function([&]() { _descriptors.destroy(); });
 }
 
 void RTApp::update_descriptors() {
@@ -2079,9 +2095,10 @@ void RTApp::update_descriptors() {
     const uint32_t num_materials = static_cast<uint32_t>(_rt_scene._materials.size());
     _rt_set.resize(_rt_set_layout.size());
 
-    std::vector<uint32_t> desc_cnt = { 1, num_meshes, num_meshes, num_meshes, num_materials, 1 };
+    std::vector<uint32_t> desc_cnt = {1, num_meshes, num_meshes, num_meshes, num_materials, 1};
     assert(static_cast<uint32_t>(_rt_set_layout.size()) == static_cast<uint32_t>(desc_cnt.size()));
-    _descriptors.create_set(_rt_set.data(), _rt_set_layout.data(), desc_cnt.data(), static_cast<uint32_t>(_rt_set_layout.size()));
+    _descriptors.create_set(_rt_set.data(), _rt_set_layout.data(), desc_cnt.data(),
+                            static_cast<uint32_t>(_rt_set_layout.size()));
 
     std::vector<VkWriteDescriptorSet> write_sets{};
     // First set:
@@ -2091,12 +2108,13 @@ void RTApp::update_descriptors() {
     //  binding 3  ->  accumulated image
     //  binding 4  ->  radiance cache
     //  binding 5/6  ->  sample tree
-    VkWriteDescriptorSetAccelerationStructureKHR descriptor_as_info = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR, nullptr };
+    VkWriteDescriptorSetAccelerationStructureKHR descriptor_as_info = {
+        VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR, nullptr};
     descriptor_as_info.accelerationStructureCount = 1;
     descriptor_as_info.pAccelerationStructures = &_rt_scene._tlas._acceleration_structure;
 
-    VkWriteDescriptorSet ws = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
-    ws.pNext = &descriptor_as_info; // extension
+    VkWriteDescriptorSet ws = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
+    ws.pNext = &descriptor_as_info;  // extension
     ws.dstSet = _rt_set[SWS_SCENE_AS_SET];
     ws.dstBinding = SWS_SCENE_AS_BINDING;
     ws.descriptorCount = 1;
@@ -2105,16 +2123,21 @@ void RTApp::update_descriptors() {
     // binding 0 end
 
     // TODO: only 1 buffer, do not need alignment
-    const uint32_t padding_buffer_size = vkutils::padding(sizeof(UniformParams), _physical_device_properties.limits.minUniformBufferOffsetAlignment);
+    const uint32_t padding_buffer_size = vkutils::padding(
+        sizeof(UniformParams), _physical_device_properties.limits.minUniformBufferOffsetAlignment);
     const uint32_t total_buffer_size = padding_buffer_size;
-    _uniform_data_buffer = rt_utils::create_buffer(_allocator, total_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, VMA_MEMORY_USAGE_CPU_TO_GPU);
+    _uniform_data_buffer =
+        rt_utils::create_buffer(_allocator, total_buffer_size, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                                VMA_MEMORY_USAGE_CPU_TO_GPU);
 
     VkDescriptorBufferInfo uniform_data_info = {};
     uniform_data_info.buffer = _uniform_data_buffer._buffer;
     uniform_data_info.offset = 0;
     uniform_data_info.range = total_buffer_size;
 
-    ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, _rt_set[SWS_SCENE_AS_SET], &uniform_data_info, SWS_CAMDATA_BINDING);
+    ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                         _rt_set[SWS_SCENE_AS_SET], &uniform_data_info,
+                                         SWS_CAMDATA_BINDING);
     write_sets.push_back(ws);
     // binding 1 end
 
@@ -2123,7 +2146,9 @@ void RTApp::update_descriptors() {
     res_image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     res_image_info.imageView = _offscreen_image[0]._image_view;
 
-    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, _rt_set[SWS_RESULT_IMAGE_SET], &res_image_info, SWS_RESULT_IMAGE_BINDING);
+    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                        _rt_set[SWS_RESULT_IMAGE_SET], &res_image_info,
+                                        SWS_RESULT_IMAGE_BINDING);
     write_sets.push_back(ws);
     // binding 2 end
 
@@ -2131,21 +2156,31 @@ void RTApp::update_descriptors() {
     accu_image_info.sampler = VK_NULL_HANDLE;
     accu_image_info.imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     accu_image_info.imageView = _offscreen_image[1]._image_view;
-    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, _rt_set[SWS_ACCUMULATED_IMAGE_SET], &accu_image_info, SWS_ACCUMULATED_IMAGE_BINDING);
+    ws = vkinit::write_descriptor_image(VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                        _rt_set[SWS_ACCUMULATED_IMAGE_SET], &accu_image_info,
+                                        SWS_ACCUMULATED_IMAGE_BINDING);
     write_sets.push_back(ws);
     // binding 3 end
 
     {
         // radiance cache buffer
-        _radiance_cache_buffer_size = sizeof(RecordPerPixel) * _window_extent.width * _window_extent.height;
-        _radiance_cache_gpu = rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-        _radiance_cache_cpu = rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size, VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+        _radiance_cache_buffer_size =
+            sizeof(RecordPerPixel) * _window_extent.width * _window_extent.height;
+        _radiance_cache_gpu = rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size,
+                                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                                          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                                      VMA_MEMORY_USAGE_GPU_ONLY);
+        _radiance_cache_cpu =
+            rt_utils::create_buffer(_allocator, _radiance_cache_buffer_size,
+                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
         VkDescriptorBufferInfo rc_info = {};
         rc_info.buffer = _radiance_cache_gpu._buffer;
         rc_info.offset = 0;
         rc_info.range = _radiance_cache_buffer_size;
-        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_RADIANCE_CACHE_SET], &rc_info, SWS_RADIANCE_CACHE_BINDING);
+        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                             _rt_set[SWS_RADIANCE_CACHE_SET], &rc_info,
+                                             SWS_RADIANCE_CACHE_BINDING);
         write_sets.push_back(ws);
     }
 
@@ -2155,8 +2190,8 @@ void RTApp::update_descriptors() {
         STree::__root = _dtree.data();
         DTree::__root = _dtree.data();
 
-        STree* s_root = _stree.data();
-        DTree* d_root = _dtree.data();
+        STree *s_root = _stree.data();
+        DTree *d_root = _dtree.data();
 
         s_root->initial_split(0, 2);
         for (int i = 0; i <= STree::__node_index; ++i) {
@@ -2165,31 +2200,45 @@ void RTApp::update_descriptors() {
         }
 
         _stree_buffer_size = _stree.size() * sizeof(STree);
-        _stree_gpu = rt_utils::create_buffer(_allocator, _stree_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-        _stree_cpu = rt_utils::create_buffer(_allocator, _stree_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+        _stree_gpu = rt_utils::create_buffer(_allocator, _stree_buffer_size,
+                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                             VMA_MEMORY_USAGE_GPU_ONLY);
+        _stree_cpu =
+            rt_utils::create_buffer(_allocator, _stree_buffer_size,
+                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
         VkDescriptorBufferInfo stree_info = {};
         stree_info.buffer = _stree_gpu._buffer;
         stree_info.offset = 0;
         stree_info.range = _stree_buffer_size;
-        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_STREE_SET], &stree_info, SWS_STREE_BINDING);
+        ws =
+            vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                            _rt_set[SWS_STREE_SET], &stree_info, SWS_STREE_BINDING);
         write_sets.push_back(ws);
 
         _dtree_buffer_size = _dtree.size() * sizeof(DTree);
-        _dtree_gpu = rt_utils::create_buffer(_allocator, _dtree_buffer_size, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VMA_MEMORY_USAGE_GPU_ONLY);
-        _dtree_cpu = rt_utils::create_buffer(_allocator, _dtree_buffer_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
+        _dtree_gpu = rt_utils::create_buffer(_allocator, _dtree_buffer_size,
+                                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                                 VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                             VMA_MEMORY_USAGE_GPU_ONLY);
+        _dtree_cpu =
+            rt_utils::create_buffer(_allocator, _dtree_buffer_size,
+                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VMA_MEMORY_USAGE_CPU_ONLY);
 
         VkDescriptorBufferInfo dtree_info = {};
         dtree_info.buffer = _dtree_gpu._buffer;
         dtree_info.offset = 0;
         dtree_info.range = _dtree_buffer_size;
-        ws = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, _rt_set[SWS_DTREE_SET], &dtree_info, SWS_DTREE_BINDING);
+        ws =
+            vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                            _rt_set[SWS_DTREE_SET], &dtree_info, SWS_DTREE_BINDING);
         write_sets.push_back(ws);
     }
 
     // Second set:
     // binding 0 (N)  ->  per-face material IDs for our meshes  (N = num meshes)
-    ws = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    ws = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     ws.dstSet = _rt_set[SWS_MATIDS_SET];
     ws.dstBinding = 0;
     ws.descriptorCount = num_meshes;
@@ -2213,7 +2262,7 @@ void RTApp::update_descriptors() {
 
     // Fifth set:
     //  binding 0 (N)  ->  textures (N = num materials)
-    ws = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    ws = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     ws.dstSet = _rt_set[SWS_TEXTURES_SET];
     ws.dstBinding = 0;
     ws.descriptorCount = num_materials;
@@ -2223,7 +2272,7 @@ void RTApp::update_descriptors() {
 
     // Sixth set:
     //  binding 0 ->  env texture
-    ws = { VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET };
+    ws = {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET};
     ws.dstSet = _rt_set[SWS_ENVS_SET];
     ws.dstBinding = 0;
     ws.descriptorCount = 1;
@@ -2233,15 +2282,14 @@ void RTApp::update_descriptors() {
 
     _descriptors.bind(write_sets.data(), static_cast<uint32_t>(write_sets.size()));
 
-    _main_deletion_queue.push_function(
-        [&]() {
-            vmaDestroyBuffer(_allocator, _uniform_data_buffer._buffer, _uniform_data_buffer._allocation);
-            vmaDestroyBuffer(_allocator, _radiance_cache_cpu._buffer, _radiance_cache_cpu._allocation);
-            vmaDestroyBuffer(_allocator, _radiance_cache_gpu._buffer, _radiance_cache_gpu._allocation);
-            vmaDestroyBuffer(_allocator, _stree_cpu._buffer, _stree_cpu._allocation);
-            vmaDestroyBuffer(_allocator, _stree_gpu._buffer, _stree_gpu._allocation);
-            vmaDestroyBuffer(_allocator, _dtree_cpu._buffer, _dtree_cpu._allocation);
-            vmaDestroyBuffer(_allocator, _dtree_gpu._buffer, _dtree_gpu._allocation);
-        }
-    );
+    _main_deletion_queue.push_function([&]() {
+        vmaDestroyBuffer(_allocator, _uniform_data_buffer._buffer,
+                         _uniform_data_buffer._allocation);
+        vmaDestroyBuffer(_allocator, _radiance_cache_cpu._buffer, _radiance_cache_cpu._allocation);
+        vmaDestroyBuffer(_allocator, _radiance_cache_gpu._buffer, _radiance_cache_gpu._allocation);
+        vmaDestroyBuffer(_allocator, _stree_cpu._buffer, _stree_cpu._allocation);
+        vmaDestroyBuffer(_allocator, _stree_gpu._buffer, _stree_gpu._allocation);
+        vmaDestroyBuffer(_allocator, _dtree_cpu._buffer, _dtree_cpu._allocation);
+        vmaDestroyBuffer(_allocator, _dtree_gpu._buffer, _dtree_gpu._allocation);
+    });
 }

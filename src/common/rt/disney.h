@@ -4,8 +4,7 @@
 #ifdef __cplusplus
 // include vec & mat types (same namings as in GLSL)
 #include "common.h"
-#endif // __cplusplus
-
+#endif  // __cplusplus
 
 struct Disney {
     vec3 _base_color;
@@ -17,7 +16,7 @@ struct Disney {
     float _clearcoat_gloss;
 
     int _is_refractive;
-    float _eta; // internal IOR / externalIOR, IOR(index of refraction)
+    float _eta;  // internal IOR / externalIOR, IOR(index of refraction)
     float _sheen_tint;
     float _specular_transmission;
 
@@ -32,4 +31,4 @@ struct DisneyParam {
     int _id;
 };
 
-#endif // !DESNEY_H
+#endif  // !DESNEY_H

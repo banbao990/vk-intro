@@ -4,7 +4,8 @@
 #include <imgui.h>
 #include <glm/gtx/transform.hpp>
 
-ModelViewerCamera::ModelViewerCamera(float field_of_view, float pitch, float yaw, float focus_height, float distance)
+ModelViewerCamera::ModelViewerCamera(float field_of_view, float pitch, float yaw,
+                                     float focus_height, float distance)
     : _focus_height(focus_height), _distance(distance) {
     _pitch = glm::radians(pitch);
     _yaw = glm::radians(yaw);
@@ -21,7 +22,7 @@ void ModelViewerCamera::draw_ui() {
 
 glm::vec3 ModelViewerCamera::position() const {
     return _distance * vkutils::polar_to_cartesian(_yaw, _pitch) +
-        glm::vec3(0.0f, _focus_height, 0.0f);
+           glm::vec3(0.0f, _focus_height, 0.0f);
 }
 
 glm::mat4 ModelViewerCamera::projection(float aspect) const {
@@ -30,7 +31,6 @@ glm::mat4 ModelViewerCamera::projection(float aspect) const {
 
 glm::mat4 ModelViewerCamera::view() const {
     glm::vec3 pos = position();
-    glm::mat4 view =
-        glm::lookAt(pos, glm::vec3(0, _focus_height, 0), glm::vec3(0, 1, 0));
+    glm::mat4 view = glm::lookAt(pos, glm::vec3(0, _focus_height, 0), glm::vec3(0, 1, 0));
     return view;
 }

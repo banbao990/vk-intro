@@ -5,9 +5,7 @@
 
 #include <tiny_obj_loader.h>
 
-VertexInputDescription Vertex::get_vertex_description(
-    int binding, VkVertexInputRate input_rate
-) {
+VertexInputDescription Vertex::get_vertex_description(int binding, VkVertexInputRate input_rate) {
     VertexInputDescription description = {};
 
     VkVertexInputBindingDescription main_binding = {};
@@ -45,13 +43,13 @@ VertexInputDescription Vertex::get_vertex_description(
     return description;
 }
 
-bool Mesh::load_from_obj(const char* relative_path) {
-    std::string path = std::string(ASSETS_DIRECTORY"/") + relative_path;
+bool Mesh::load_from_obj(const char *relative_path) {
+    std::string path = std::string(ASSETS_DIRECTORY "/") + relative_path;
     // 1. tinyobj loading
-    tinyobj::attrib_t attrib;                       // vertex
-    std::vector<tinyobj::shape_t> shapes;           // objects
-    std::vector<tinyobj::material_t> materials;     // materials (do not use)
-    std::string warn, err;                          // loading info
+    tinyobj::attrib_t attrib;                    // vertex
+    std::vector<tinyobj::shape_t> shapes;        // objects
+    std::vector<tinyobj::material_t> materials;  // materials (do not use)
+    std::string warn, err;                       // loading info
 
     // assume the *.mtl file is in the same dir
     std::string mtl_dir = std::string(path);
@@ -123,15 +121,17 @@ bool Mesh::load_from_obj(const char* relative_path) {
                 new_vert.normal.y = ny;
                 new_vert.normal.z = nz;
                 new_vert.uv.x = uv_x;
-                new_vert.uv.y = 1.0f - uv_y; // stb
+                new_vert.uv.y = 1.0f - uv_y;  // stb
 
-                // we are setting the vertex color as the vertex normal. This is just for display purposes
+                // we are setting the vertex color as the vertex normal. This is just for display
+                // purposes
                 _vertices.push_back(new_vert);
             }
             index_offset += fv;
         }
     }
 
-    std::cout << "[Obj Loading] " << relative_path << ", total vertices: " << _vertices.size() << std::endl;
+    std::cout << "[Obj Loading] " << relative_path << ", total vertices: " << _vertices.size()
+              << std::endl;
     return true;
 }

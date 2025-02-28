@@ -10,45 +10,39 @@
 #include "types.h"
 
 // check the vulkan result
-#define VK_CHECK(x)                                                         \
-do {                                                                        \
-    VkResult err = x;                                                       \
-    if (err) {                                                              \
-        std::cerr << "[Error] Detected Vulkan Error: " << err << std::endl; \
-        abort();                                                            \
-    }                                                                       \
-} while (0)                                                                 \
+#define VK_CHECK(x)                                                             \
+    do {                                                                        \
+        VkResult err = x;                                                       \
+        if (err) {                                                              \
+            std::cerr << "[Error] Detected Vulkan Error: " << err << std::endl; \
+            abort();                                                            \
+        }                                                                       \
+    } while (0)
 
 template <typename T>
 class FixSizeQueue {
 public:
-    FixSizeQueue(size_t max_size) : _max_size(max_size) {}
+    FixSizeQueue(size_t max_size)
+        : _max_size(max_size) {}
 
-    void push(const T& value) {
+    void push(const T &value) {
         _queue.push(value);
         constrain_size();
     }
 
-    template <typename... Args> void emplace(Args &&...args) {
+    template <typename... Args>
+    void emplace(Args &&...args) {
         _queue.emplace(std::forward<Args>(args)...);
         constrain_size();
     }
 
-    const T& front() const {
-        return _queue.front();
-    }
+    const T &front() const { return _queue.front(); }
 
-    const T& back() const {
-        return _queue.back();
-    }
+    const T &back() const { return _queue.back(); }
 
-    bool empty() const {
-        return _queue.empty();
-    }
+    bool empty() const { return _queue.empty(); }
 
-    size_t size() const {
-        return _queue.size();
-    }
+    size_t size() const { return _queue.size(); }
 
 private:
     void constrain_size() {
@@ -65,9 +59,7 @@ class DeletionQueue {
 public:
     std::deque<std::function<void()>> deletors{};
 
-    void push_function(std::function<void()>&& function) {
-        deletors.push_back(function);
-    }
+    void push_function(std::function<void()> &&function) { deletors.push_back(function); }
 
     void flush() {
         // reverse
@@ -79,8 +71,7 @@ public:
 };
 
 namespace vkutils {
-    uint32_t padding(uint32_t original_size, uint32_t alignment);
+uint32_t padding(uint32_t original_size, uint32_t alignment);
 
-    glm::vec3 polar_to_cartesian(float yaw, float pitch);
-}
-
+glm::vec3 polar_to_cartesian(float yaw, float pitch);
+}  // namespace vkutils

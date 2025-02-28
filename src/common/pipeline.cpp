@@ -3,7 +3,8 @@
 
 #include <iostream>
 
-VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass, bool use_z_buffer, uint32_t subpass) {
+VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass, bool use_z_buffer,
+                                           uint32_t subpass) {
     // make viewport state from our stored viewport and scissor.
     // at the moment we won't support multiple viewports or scissors
     VkPipelineViewportStateCreateInfo viewport_info =
@@ -39,10 +40,12 @@ VkPipeline PipelineBuilder::build_pipeline(VkDevice device, VkRenderPass pass, b
     }
 
     VkPipeline new_pipeline;
-    VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &new_pipeline);
+    VkResult result = vkCreateGraphicsPipelines(device, VK_NULL_HANDLE, 1, &pipeline_info, nullptr,
+                                                &new_pipeline);
     if (result != VK_SUCCESS) {
         // failed to create graphics pipeline
-        std::cout << "[ERROR] failed to create pipeline\n" << std::endl;
+        std::cout << "[ERROR] failed to create pipeline\n"
+                  << std::endl;
         return VK_NULL_HANDLE;
     } else {
         return new_pipeline;
@@ -56,4 +59,3 @@ void PipelineBuilder::reset_shaders() {
 void PipelineBuilder::add_shaders(VkShaderStageFlagBits stage, VkShaderModule shader_module) {
     _shader_stages.push_back(vkinit::pipeline_shader_stage_create_info(stage, shader_module));
 }
-

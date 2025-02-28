@@ -4,12 +4,13 @@
 
 class FixedTriangleApp : public RasApp {
 public:
-    FixedTriangleApp(const char* name, uint32_t width, uint32_t height, bool use_validation_layer);
+    FixedTriangleApp(const char *name, uint32_t width, uint32_t height, bool use_validation_layer);
     virtual ~FixedTriangleApp();
+
 protected:
     // virtual void init_per_frame() override;
     // virtual void init() override;
-    virtual bool deal_with_sdl_event(SDL_Event& e) override;
+    virtual bool deal_with_sdl_event(SDL_Event &e) override;
     // virtual void draw() override;
     // virtual void init_commands() override;
     // virtual void init_framebuffers() override;

@@ -5,13 +5,15 @@
 
 class Shader {
 public:
-    Shader(VkDevice device, const char* vertex_relative_path = nullptr, const char* fragment_relative_path = nullptr);
+    Shader(VkDevice device, const char *vertex_relative_path = nullptr,
+           const char *fragment_relative_path = nullptr);
     virtual ~Shader();
 
     VkShaderModule vertex() const;
     VkShaderModule fragment() const;
 
-    static VkShaderModule load_shader_module(VkDevice device, const char* file_relative_path);
+    static VkShaderModule load_shader_module(VkDevice device, const char *file_relative_path);
+
 private:
     VkDevice _device;
     VkShaderModule _vertex_shader = VK_NULL_HANDLE;

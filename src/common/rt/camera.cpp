@@ -5,17 +5,11 @@ static const vec3 sCameraUp(0.0f, 1.0f, 0.0f);
 #include <iostream>
 
 Camera::Camera()
-    : mFovY(65.0f)
-    , mNearZ(1.0f)
-    , mFarZ(1000.0f)
-    , mPosition(0.0f, 0.0f, 0.0f)
-    , mDirection(0.0f, 0.0f, 1.0f) {
-}
+    : mFovY(65.0f), mNearZ(1.0f), mFarZ(1000.0f), mPosition(0.0f, 0.0f, 0.0f), mDirection(0.0f, 0.0f, 1.0f) {}
 
-Camera::~Camera() {
-}
+Camera::~Camera() {}
 
-void Camera::SetViewport(const Recti& viewport) {
+void Camera::SetViewport(const Recti &viewport) {
     mViewport = viewport;
     this->MakeProjection();
 }
@@ -31,12 +25,12 @@ void Camera::SetViewPlanes(const float nearZ, const float farZ) {
     this->MakeProjection();
 }
 
-void Camera::SetPosition(const vec3& pos) {
+void Camera::SetPosition(const vec3 &pos) {
     mPosition = pos;
     this->MakeTransform();
 }
 
-void Camera::LookAt(const vec3& pos, const vec3& target) {
+void Camera::LookAt(const vec3 &pos, const vec3 &target) {
     mPosition = pos;
     mDirection = normalize(target - pos);
 
@@ -63,7 +57,7 @@ void Camera::Rotate(const float angleX, const float angleY) {
     vec3 side = cross(mDirection, sCameraUp);
     quat pitchQ = QAngleAxis(Deg2Rad(angleY), side);
     quat headingQ = QAngleAxis(Deg2Rad(angleX), sCameraUp);
-    //add the two quaternions
+    // add the two quaternions
     quat temp = normalize(pitchQ * headingQ);
     // finally rotate our direction
     mDirection = normalize(QRotate(temp, mDirection));
@@ -83,19 +77,19 @@ float Camera::GetFovY() const {
     return mFovY;
 }
 
-const mat4& Camera::GetProjection() const {
+const mat4 &Camera::GetProjection() const {
     return mProjection;
 }
 
-const mat4& Camera::GetTransform() const {
+const mat4 &Camera::GetTransform() const {
     return mTransform;
 }
 
-const vec3& Camera::GetPosition() const {
+const vec3 &Camera::GetPosition() const {
     return mPosition;
 }
 
-const vec3& Camera::GetDirection() const {
+const vec3 &Camera::GetDirection() const {
     return mDirection;
 }
 
@@ -108,7 +102,8 @@ const vec3 Camera::GetSide() const {
 }
 
 void Camera::MakeProjection() {
-    const float aspect = static_cast<float>(mViewport.right - mViewport.left) / static_cast<float>(mViewport.bottom - mViewport.top);
+    const float aspect = static_cast<float>(mViewport.right - mViewport.left) /
+                         static_cast<float>(mViewport.bottom - mViewport.top);
     mProjection = MatProjection(Deg2Rad(mFovY), aspect, mNearZ, mFarZ);
 }
 
@@ -116,7 +111,7 @@ void Camera::MakeTransform() {
     mTransform = MatLookAt(mPosition, mPosition + mDirection, sCameraUp);
 }
 
-const bool  Camera::IsCameraChanged() const {
+const bool Camera::IsCameraChanged() const {
     return mChanged;
 }
 

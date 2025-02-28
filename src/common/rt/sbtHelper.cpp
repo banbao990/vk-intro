@@ -12,12 +12,9 @@ SBTHelper::SBTHelper() {
     _num_miss_groups = 0u;
 }
 
-void SBTHelper::initialize(
-    const uint32_t num_hit_groups,
-    const uint32_t num_miss_groups,
-    const uint32_t shader_handle_size,
-    const uint32_t shader_group_alignment
-) {
+void SBTHelper::initialize(const uint32_t num_hit_groups, const uint32_t num_miss_groups,
+                           const uint32_t shader_handle_size,
+                           const uint32_t shader_group_alignment) {
     _shader_handle_size = shader_handle_size;
     _shader_group_alignment = shader_group_alignment;
     _num_hit_groups = num_hit_groups;
@@ -30,12 +27,13 @@ void SBTHelper::initialize(
     _groups.clear();
 }
 
-void SBTHelper::set_raygen_stage(const VkPipelineShaderStageCreateInfo& stage) {
+void SBTHelper::set_raygen_stage(const VkPipelineShaderStageCreateInfo &stage) {
     // this shader stage should go first!
     assert(_stages.empty());
     _stages.push_back(stage);
 
-    VkRayTracingShaderGroupCreateInfoKHR info = { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr };
+    VkRayTracingShaderGroupCreateInfoKHR info = {
+        VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr};
     info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
     info.generalShader = 0;
     info.closestHitShader = VK_SHADER_UNUSED_KHR;
@@ -44,7 +42,8 @@ void SBTHelper::set_raygen_stage(const VkPipelineShaderStageCreateInfo& stage) {
     _groups.push_back(info);
 }
 
-void SBTHelper::add_stage_to_hit_groups(const std::vector<VkPipelineShaderStageCreateInfo>& stages, const uint32_t group_index) {
+void SBTHelper::add_stage_to_hit_groups(const std::vector<VkPipelineShaderStageCreateInfo> &stages,
+                                        const uint32_t group_index) {
     // raygen stage should go first!
     assert(!_stages.empty());
     // as initialized
@@ -53,15 +52,17 @@ void SBTHelper::add_stage_to_hit_groups(const std::vector<VkPipelineShaderStageC
     assert(!stages.empty() && stages.size() <= 3);
 
     // start from 1: raygen is 0
-    uint32_t offset = std::accumulate(_num_hit_shaders.begin(), _num_hit_shaders.begin() + group_index, 1);
+    uint32_t offset =
+        std::accumulate(_num_hit_shaders.begin(), _num_hit_shaders.begin() + group_index, 1);
 
     // put hit shaders together
     auto it_stage = _stages.begin() + offset;
     _stages.insert(it_stage, stages.begin(), stages.end());
 
     // create group
-    VkRayTracingShaderGroupCreateInfoKHR group_info = { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr };
-    group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR; // triangle list
+    VkRayTracingShaderGroupCreateInfoKHR group_info = {
+        VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr};
+    group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;  // triangle list
     group_info.generalShader = VK_SHADER_UNUSED_KHR;
     group_info.closestHitShader = VK_SHADER_UNUSED_KHR;
     group_info.anyHitShader = VK_SHADER_UNUSED_KHR;
@@ -69,7 +70,7 @@ void SBTHelper::add_stage_to_hit_groups(const std::vector<VkPipelineShaderStageC
 
     // check all shaders in this group
     for (size_t i = 0; i < stages.size(); ++i) {
-        const VkPipelineShaderStageCreateInfo& stage_info = stages[i];
+        const VkPipelineShaderStageCreateInfo &stage_info = stages[i];
         const uint32_t shader_index = static_cast<uint32_t>(offset + i);
         if (stage_info.stage == VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR) {
             group_info.closestHitShader = shader_index;
@@ -85,7 +86,8 @@ void SBTHelper::add_stage_to_hit_groups(const std::vector<VkPipelineShaderStageC
     _num_hit_shaders[group_index] += static_cast<uint32_t>(stages.size());
 }
 
-void SBTHelper::add_stage_to_miss_groups(const VkPipelineShaderStageCreateInfo& stage, const uint32_t group_index) {
+void SBTHelper::add_stage_to_miss_groups(const VkPipelineShaderStageCreateInfo &stage,
+                                         const uint32_t group_index) {
     // raygen stage should go first!
     assert(!_stages.empty());
     // as initialized
@@ -93,14 +95,16 @@ void SBTHelper::add_stage_to_miss_groups(const VkPipelineShaderStageCreateInfo& 
 
     uint32_t offset = 1;
     offset = std::accumulate(_num_hit_shaders.begin(), _num_hit_shaders.end(), offset);
-    offset = std::accumulate(_num_miss_shaders.begin(), _num_miss_shaders.begin() + group_index, offset);
+    offset =
+        std::accumulate(_num_miss_shaders.begin(), _num_miss_shaders.begin() + group_index, offset);
 
     // put miss shaders together
     // TODO: equals to end()?
     _stages.insert(_stages.begin() + offset, stage);
 
     // create group
-    VkRayTracingShaderGroupCreateInfoKHR group_info = { VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr };
+    VkRayTracingShaderGroupCreateInfoKHR group_info = {
+        VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR, nullptr};
     group_info.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_GENERAL_KHR;
     group_info.generalShader = offset;
     group_info.closestHitShader = VK_SHADER_UNUSED_KHR;
@@ -119,11 +123,11 @@ uint32_t SBTHelper::get_num_groups() const {
     return static_cast<uint32_t>(_groups.size());
 }
 
-const VkPipelineShaderStageCreateInfo* SBTHelper::get_stages() const {
+const VkPipelineShaderStageCreateInfo *SBTHelper::get_stages() const {
     return _stages.data();
 }
 
-const VkRayTracingShaderGroupCreateInfoKHR* SBTHelper::get_groups() const {
+const VkRayTracingShaderGroupCreateInfoKHR *SBTHelper::get_groups() const {
     return _groups.data();
 }
 
@@ -142,7 +146,6 @@ uint32_t SBTHelper::get_shader_handle_size() const {
 uint32_t SBTHelper::get_shader_group_alignment() const {
     return _shader_group_alignment;
 }
-
 
 VkDeviceAddress SBTHelper::get_SBT_address(VkDevice device) const {
     return rt_utils::get_buffer_device_address(device, _SBT_buffer._buffer).deviceAddress;
@@ -164,11 +167,11 @@ uint32_t SBTHelper::get_hit_groups_offset() const {
     return get_raygen_offset() + get_raygen_size();
 }
 
-uint32_t SBTHelper::get_hit_groups_size() const{
+uint32_t SBTHelper::get_hit_groups_size() const {
     return _num_hit_groups * _shader_group_alignment;
 }
 
-uint32_t SBTHelper::get_miss_groups_offset() const{
+uint32_t SBTHelper::get_miss_groups_offset() const {
     return get_hit_groups_offset() + get_hit_groups_size();
 }
 
