@@ -79,45 +79,7 @@ vec2 DirToLatLong(vec3 dir) {
     return vec2((MY_PI + phi) * (0.5 / MY_PI), theta * MY_INV_PI);
 }
 
-// randam sampler start
-uint InitRandomSeed(uint val0, uint val1) {
-    uint v0 = val0, v1 = val1, s0 = 0;
-
-    for (uint n = 0; n < 16; n++) {
-        s0 += 0x9e3779b9;
-        v0 += ((v1 << 4) + 0xa341316c) ^ (v1 + s0) ^ ((v1 >> 5) + 0xc8013ea4);
-        v1 += ((v0 << 4) + 0xad90777d) ^ (v0 + s0) ^ ((v0 >> 5) + 0x7e95761e);
-    }
-    return v0;
-}
-
-uint RandomInt(inout uint seed) {
-    // LCG values from Numerical Recipes
-    return (seed = 1664525 * seed + 1013904223);
-}
-
-float RandomFloat(inout uint seed) {
-    //// Float version using bitmask from Numerical Recipes
-    // const uint one = 0x3f800000;
-    // const uint msk = 0x007fffff;
-    // return uintBitsToFloat(one | (msk & (RandomInt(seed) >> 9))) - 1;
-
-    // Faster version from NVIDIA examples; quality good enough for our use case.
-    return (float(RandomInt(seed) & 0x00FFFFFF) / float(0x01000000));
-}
-
-vec3 random_cosine_direction(inout uint wseed) {
-    float r1 = RandomFloat(wseed);
-    float r2 = RandomFloat(wseed);
-    float z = sqrt(1 - r2);
-
-    float phi = MY_PI * 2 * r1;
-    float x = cos(phi) * sqrt(r2);
-    float y = sin(phi) * sqrt(r2);
-    return normalize(vec3(x, y, z));
-}
-
-// random sampler end
+#include "random.glsl"
 
 // from ppg
 // x,y,z => theta, z => [0, 1]
@@ -282,7 +244,8 @@ void eval_lambertian(in vec3 normal, in vec3 direction, out float pdf) {
     pdf = dot(normal, direction) / MY_PI;
 }
 
-#include "disney.glsl"
+// #include "disney.glsl"
+#include "disney.new.glsl"
 
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
@@ -394,18 +357,14 @@ void main() {
                 Disney disney = Params.disney_param._disney;
 
                 vec3 direction_in = -direction;
-                sample_lambertian(wseed, hitNormal, direction, pdf);
-                if (disney._is_refractive > 0) {
-                    // in -> out
-                    if (dot(hitNormal, direction_in) < 0) {
-                        // must go out
-                    } else {
-                        pdf *= 0.5f;
-                        if (RandomFloat(wseed) < 0.5f) {
-                            direction = -direction;
-                        }
-                    }
+                sample_disney(disney, wseed, hitNormal, direction, pdf);
+
+                // invalid sample
+                if (pdf == 0.0) {
+                    finalColor = vec3(0.0f);
+                    break;
                 }
+
                 eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
 
                 origin = hitPos + direction * DIRECTION_FORWARD;

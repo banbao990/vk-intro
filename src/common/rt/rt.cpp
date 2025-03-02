@@ -89,7 +89,7 @@ void RTApp::init_imgui() {
 }
 
 void RTApp::reset() {
-    _spp = 1;
+    _spp = 0;
     _time_start = _frame_time_samples.back();
 }
 
@@ -1459,7 +1459,7 @@ void RTApp::init_scenes() {
     disney._roughness = 0.8f;
     disney._subsurface = 0.5f;
     disney._anisotropic = 0.8f;
-    disney._metallic = 1.0f;
+    disney._metallic = 0.8f;
     disney._eta = 1.5f;
     disney._clearcoat_gloss = 0.5f;
     disney._sheen_tint = 0.2f;
