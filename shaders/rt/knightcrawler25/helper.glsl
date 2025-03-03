@@ -1,0 +1,152 @@
+#ifndef _RT_KNIGHTCRAWLER25_HELPER_H_
+#define _RT_KNIGHTCRAWLER25_HELPER_H_
+
+#define PI 3.14159265358979323
+#define INV_PI 0.31830988618379067
+#define TWO_PI 6.28318530717958648
+#define INV_TWO_PI 0.15915494309189533
+#define INV_4_PI 0.07957747154594766
+// #define EPS 0.0003
+// #define INF 1000000.0
+
+float Luminance(vec3 c) {
+    return 0.212671 * c.x + 0.715160 * c.y + 0.072169 * c.z;
+}
+
+// sample
+
+float GTR1(float NDotH, float a) {
+    if (a >= 1.0)
+        return INV_PI;
+    float a2 = a * a;
+    float t = 1.0 + (a2 - 1.0) * NDotH * NDotH;
+    return (a2 - 1.0) / (PI * log(a2) * t);
+}
+
+vec3 SampleGTR1(float rgh, float r1, float r2) {
+    float a = max(0.001, rgh);
+    float a2 = a * a;
+
+    float phi = r1 * TWO_PI;
+
+    float cosTheta = sqrt((1.0 - pow(a2, 1.0 - r2)) / (1.0 - a2));
+    float sinTheta = clamp(sqrt(1.0 - (cosTheta * cosTheta)), 0.0, 1.0);
+    float sinPhi = sin(phi);
+    float cosPhi = cos(phi);
+
+    return vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+}
+
+float GTR2(float NDotH, float a) {
+    float a2 = a * a;
+    float t = 1.0 + (a2 - 1.0) * NDotH * NDotH;
+    return a2 / (PI * t * t);
+}
+
+vec3 SampleGTR2(float rgh, float r1, float r2) {
+    float a = max(0.001, rgh);
+
+    float phi = r1 * TWO_PI;
+
+    float cosTheta = sqrt((1.0 - r2) / (1.0 + (a * a - 1.0) * r2));
+    float sinTheta = clamp(sqrt(1.0 - (cosTheta * cosTheta)), 0.0, 1.0);
+    float sinPhi = sin(phi);
+    float cosPhi = cos(phi);
+
+    return vec3(sinTheta * cosPhi, sinTheta * sinPhi, cosTheta);
+}
+
+vec3 SampleGGXVNDF(vec3 V, float ax, float ay, float r1, float r2) {
+    vec3 Vh = normalize(vec3(ax * V.x, ay * V.y, V.z));
+
+    float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
+    vec3 T1 = lensq > 0 ? vec3(-Vh.y, Vh.x, 0) * inversesqrt(lensq) : vec3(1, 0, 0);
+    vec3 T2 = cross(Vh, T1);
+
+    float r = sqrt(r1);
+    float phi = 2.0 * PI * r2;
+    float t1 = r * cos(phi);
+    float t2 = r * sin(phi);
+    float s = 0.5 * (1.0 + Vh.z);
+    t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
+
+    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+
+    return normalize(vec3(ax * Nh.x, ay * Nh.y, max(0.0, Nh.z)));
+}
+
+float GTR2Aniso(float NDotH, float HDotX, float HDotY, float ax, float ay) {
+    float a = HDotX / ax;
+    float b = HDotY / ay;
+    float c = a * a + b * b + NDotH * NDotH;
+    return 1.0 / (PI * ax * ay * c * c);
+}
+
+vec3 SampleGTR2Aniso(float ax, float ay, float r1, float r2) {
+    float phi = r1 * TWO_PI;
+
+    float sinPhi = ay * sin(phi);
+    float cosPhi = ax * cos(phi);
+    float tanTheta = sqrt(r2 / (1 - r2));
+
+    return vec3(tanTheta * cosPhi, tanTheta * sinPhi, 1.0);
+}
+
+float SmithG(float NDotV, float alphaG) {
+    float a = alphaG * alphaG;
+    float b = NDotV * NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a + b - a * b));
+}
+
+float SmithGAniso(float NDotV, float VDotX, float VDotY, float ax, float ay) {
+    float a = VDotX * ax;
+    float b = VDotY * ay;
+    float c = NDotV;
+    return (2.0 * NDotV) / (NDotV + sqrt(a * a + b * b + c * c));
+}
+
+float SchlickWeight(float u) {
+    float m = clamp(1.0 - u, 0.0, 1.0);
+    float m2 = m * m;
+    return m2 * m2 * m;
+}
+
+float DielectricFresnel(float cosThetaI, float eta) {
+    float sinThetaTSq = eta * eta * (1.0f - cosThetaI * cosThetaI);
+
+    // Total internal reflection
+    if (sinThetaTSq > 1.0)
+        return 1.0;
+
+    float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
+
+    float rs = (eta * cosThetaT - cosThetaI) / (eta * cosThetaT + cosThetaI);
+    float rp = (eta * cosThetaI - cosThetaT) / (eta * cosThetaI + cosThetaT);
+
+    return 0.5f * (rs * rs + rp * rp);
+}
+
+vec3 CosineSampleHemisphere(float r1, float r2) {
+    vec3 dir;
+    float r = sqrt(r1);
+    float phi = TWO_PI * r2;
+    dir.x = r * cos(phi);
+    dir.y = r * sin(phi);
+    dir.z = sqrt(max(0.0, 1.0 - dir.x * dir.x - dir.y * dir.y));
+    return dir;
+}
+
+vec3 UniformSampleHemisphere(float r1, float r2) {
+    float r = sqrt(max(0.0, 1.0 - r1 * r1));
+    float phi = TWO_PI * r2;
+    return vec3(r * cos(phi), r * sin(phi), r1);
+}
+
+vec3 UniformSampleSphere(float r1, float r2) {
+    float z = 1.0 - 2.0 * r1;
+    float r = sqrt(max(0.0, 1.0 - z * z));
+    float phi = TWO_PI * r2;
+    return vec3(r * cos(phi), r * sin(phi), z);
+}
+
+#endif

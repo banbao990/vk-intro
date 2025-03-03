@@ -1,3 +1,6 @@
+#ifndef _RT_KNIGHTCRAWLER25_DISNEY_GLSL_
+#define _RT_KNIGHTCRAWLER25_DISNEY_GLSL_
+
 // modified from https://github.com/knightcrawler25/GLSL-PathTracer/blob/master/src/shaders/common/disney.glsl
 
 /* References:
@@ -12,7 +15,39 @@
  * [9] [Mitsuba 3] https://github.com/mitsuba-renderer/mitsuba3
  */
 
-vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf);
+#include "helper.glsl"
+
+struct Material {
+    vec3 baseColor;
+    float anisotropic;
+
+    float metallic;
+    float roughness;
+    float subsurface;
+    float specularTint;
+
+    float sheen;
+    float sheenTint;
+    float clearcoat;
+    float clearcoatRoughness;
+
+    float specTrans;
+    float ior;
+    float ax;
+    float ay;
+};
+
+struct State {
+    Material mat;
+    float eta;
+};
+
+// construct T, B
+void buildOnb(in vec3 N, inout vec3 T, inout vec3 B) {
+    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
 
 vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
     return V.x * X + V.y * Y + V.z * Z;
@@ -110,109 +145,13 @@ vec3 EvalClearcoat(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
     return vec3(F) * D * G;
 }
 
-vec3 DisneySample(State state, vec3 V, vec3 N, out vec3 L, out float pdf) {
-    pdf = 0.0;
-
-    float r1 = rand();
-    float r2 = rand();
-
-    // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
-    vec3 T, B;
-    Onb(N, T, B);
-
-    // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
-    V = ToLocal(T, B, N, V);
-
-    // Tint colors
-    vec3 Csheen, Cspec0;
-    float F0;
-    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
-
-    // Model weights
-    float dielectricWt = (1.0 - state.mat.metallic) * (1.0 - state.mat.specTrans);
-    float metalWt = state.mat.metallic;
-    float glassWt = (1.0 - state.mat.metallic) * state.mat.specTrans;
-
-    // Lobe probabilities
-    float schlickWt = SchlickWeight(V.z);
-
-    float diffPr = dielectricWt * Luminance(state.mat.baseColor);
-    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-    float metalPr = metalWt * Luminance(mix(state.mat.baseColor, vec3(1.0), schlickWt));
-    float glassPr = glassWt;
-    float clearCtPr = 0.25 * state.mat.clearcoat;
-
-    // Normalize probabilities
-    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
-    diffPr *= invTotalWt;
-    dielectricPr *= invTotalWt;
-    metalPr *= invTotalWt;
-    glassPr *= invTotalWt;
-    clearCtPr *= invTotalWt;
-
-    // CDF of the sampling probabilities
-    float cdf[5];
-    cdf[0] = diffPr;
-    cdf[1] = cdf[0] + dielectricPr;
-    cdf[2] = cdf[1] + metalPr;
-    cdf[3] = cdf[2] + glassPr;
-    cdf[4] = cdf[3] + clearCtPr;
-
-    // Sample a lobe based on its importance
-    float r3 = rand();
-
-    if (r3 < cdf[0])  // Diffuse
-    {
-        L = CosineSampleHemisphere(r1, r2);
-    } else if (r3 < cdf[2])  // Dielectric + Metallic reflection
-    {
-        vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
-
-        if (H.z < 0.0)
-            H = -H;
-
-        L = normalize(reflect(-V, H));
-    } else if (r3 < cdf[3])  // Glass
-    {
-        vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
-        float F = DielectricFresnel(abs(dot(V, H)), state.eta);
-
-        if (H.z < 0.0)
-            H = -H;
-
-        // Rescale random number for reuse
-        r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
-
-        // Reflection
-        if (r3 < F) {
-            L = normalize(reflect(-V, H));
-        } else  // Transmission
-        {
-            L = normalize(refract(-V, H, state.eta));
-        }
-    } else  // Clearcoat
-    {
-        vec3 H = SampleGTR1(state.mat.clearcoatRoughness, r1, r2);
-
-        if (H.z < 0.0)
-            H = -H;
-
-        L = normalize(reflect(-V, H));
-    }
-
-    L = ToWorld(T, B, N, L);
-    V = ToWorld(T, B, N, V);
-
-    return DisneyEval(state, V, N, L, pdf);
-}
-
 vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
     pdf = 0.0;
     vec3 f = vec3(0.0);
 
     // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
     vec3 T, B;
-    Onb(N, T, B);
+    buildOnb(N, T, B);
 
     // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
     V = ToLocal(T, B, N, V);
@@ -305,3 +244,101 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
 
     return f * abs(L.z);
 }
+
+vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out float pdf) {
+    pdf = 0.0;
+
+    float r1 = rnd.x;
+    float r2 = rnd.y;
+
+    // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
+    vec3 T, B;
+    buildOnb(N, T, B);
+
+    // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
+    V = ToLocal(T, B, N, V);
+
+    // Tint colors
+    vec3 Csheen, Cspec0;
+    float F0;
+    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
+
+    // Model weights
+    float dielectricWt = (1.0 - state.mat.metallic) * (1.0 - state.mat.specTrans);
+    float metalWt = state.mat.metallic;
+    float glassWt = (1.0 - state.mat.metallic) * state.mat.specTrans;
+
+    // Lobe probabilities
+    float schlickWt = SchlickWeight(V.z);
+
+    float diffPr = dielectricWt * Luminance(state.mat.baseColor);
+    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+    float metalPr = metalWt * Luminance(mix(state.mat.baseColor, vec3(1.0), schlickWt));
+    float glassPr = glassWt;
+    float clearCtPr = 0.25 * state.mat.clearcoat;
+
+    // Normalize probabilities
+    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
+    diffPr *= invTotalWt;
+    dielectricPr *= invTotalWt;
+    metalPr *= invTotalWt;
+    glassPr *= invTotalWt;
+    clearCtPr *= invTotalWt;
+
+    // CDF of the sampling probabilities
+    float cdf[5];
+    cdf[0] = diffPr;
+    cdf[1] = cdf[0] + dielectricPr;
+    cdf[2] = cdf[1] + metalPr;
+    cdf[3] = cdf[2] + glassPr;
+    cdf[4] = cdf[3] + clearCtPr;
+
+    // Sample a lobe based on its importance
+    float r3 = rnd.z;
+
+    if (r3 < cdf[0])  // Diffuse
+    {
+        L = CosineSampleHemisphere(r1, r2);
+    } else if (r3 < cdf[2])  // Dielectric + Metallic reflection
+    {
+        vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
+
+        if (H.z < 0.0)
+            H = -H;
+
+        L = normalize(reflect(-V, H));
+    } else if (r3 < cdf[3])  // Glass
+    {
+        vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
+        float F = DielectricFresnel(abs(dot(V, H)), state.eta);
+
+        if (H.z < 0.0)
+            H = -H;
+
+        // Rescale random number for reuse
+        r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
+
+        // Reflection
+        if (r3 < F) {
+            L = normalize(reflect(-V, H));
+        } else  // Transmission
+        {
+            L = normalize(refract(-V, H, state.eta));
+        }
+    } else  // Clearcoat
+    {
+        vec3 H = SampleGTR1(state.mat.clearcoatRoughness, r1, r2);
+
+        if (H.z < 0.0)
+            H = -H;
+
+        L = normalize(reflect(-V, H));
+    }
+
+    L = ToWorld(T, B, N, L);
+    V = ToWorld(T, B, N, V);
+
+    return DisneyEval(state, V, N, L, pdf);
+}
+
+#endif

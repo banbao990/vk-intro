@@ -1,10 +1,12 @@
+// modified from: https://github.com/woAIxuexiSR/SRT/blob/master/src/device_include/scene/bxdf.h
+
 #ifndef DISNEY_GLSL
 #define DISNEY_GLSL
 
 #define METAL_ALPHA_MIN 1e-3f
 #define DISNEY_EPS 1e-6f
 
-#include "random.glsl"
+#include "../random.glsl"
 
 struct Onb {
     vec3 normal;     // z
@@ -134,16 +136,6 @@ vec3 sample_GGXVNDF(in vec3 V, in float a, in vec2 rnd) {
     return normalize(vec3(a * Nh.x, a * Nh.y, max(0.0f, Nh.z)));
 }
 
-//__host__ __device__ inline float3 sample_GTR1(float a, float2 sample) {
-//    if (a >= 1.0f)
-//        return cosine_sample_hemisphere(sample);
-//    float a2 = a * a;
-//    float phi = 2.0f * (float)M_PI * sample.x;
-//    float cos_theta = sqrt((1.0f - pow(a2, 1.0f - sample.y)) / (1.0f - a2));
-//    float sin_theta = clamp(sqrt(1.0f - (cos_theta * cos_theta)), 0.0f, 1.0f);
-//    return make_float3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
-//}
-
 vec3 sample_GTR1(float a, vec2 rnd) {
     if (a >= 1.0f) {
         return random_cosine_direction(rnd);
@@ -154,28 +146,6 @@ vec3 sample_GTR1(float a, vec2 rnd) {
     float sin_theta = clamp(sqrt(1.0f - (cos_theta * cos_theta)), 0.0f, 1.0f);
     return vec3(cos(phi) * sin_theta, sin(phi) * sin_theta, cos_theta);
 }
-
-#ifdef __INTELLISENSE__
-struct Disney {
-    vec3 _base_color;
-    float _roughness;
-
-    float _subsurface;
-    float _anisotropic;
-    float _metallic;
-    float _clearcoat_gloss;
-
-    int _is_refractive;
-    float _eta;  // internal IOR / externalIOR, IOR(index of refraction)
-    float _sheen_tint;
-    float _specular_transmission;
-
-    float _specular_tint;
-    float _clearcoat;
-    float _sheen;
-    float _specular;
-};
-#endif
 
 // bsdf = BSDF * cos
 // wi, wo: world space

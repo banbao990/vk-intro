@@ -178,7 +178,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             }
 
             disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
-            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.1f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.001f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Subsurface", &disney._subsurface, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Metallic", &disney._metallic, 0.0f, 1.0f);
 
@@ -187,7 +187,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             disney_changed |= (temp != disney._is_refractive);
 
             disney_changed |= ImGui::SliderFloat("Anisotropic", &disney._anisotropic, 0.0f, 1.0f);
-            disney_changed |= ImGui::SliderFloat("Index of Refraction", &disney._eta, 0.5f, 2.0f);
+            disney_changed |= ImGui::SliderFloat("Index of Refraction", &disney._eta, 1.001f, 2.0f);
             disney_changed |=
                 ImGui::SliderFloat("Clearcoat Gloss", &disney._clearcoat_gloss, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Sheen Tint", &disney._sheen_tint, 0.0f, 1.0f);

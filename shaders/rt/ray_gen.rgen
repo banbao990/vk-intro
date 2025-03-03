@@ -244,8 +244,9 @@ void eval_lambertian(in vec3 normal, in vec3 direction, out float pdf) {
     pdf = dot(normal, direction) / MY_PI;
 }
 
-// #include "disney.glsl"
-#include "disney.new.glsl"
+// #include "disney-bad/disney.glsl"
+// #include "disney-bad/disney.SRT.glsl"
+#include "knightcrawler25/main.glsl"
 
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
@@ -357,6 +358,8 @@ void main() {
                 Disney disney = Params.disney_param._disney;
 
                 vec3 direction_in = -direction;
+
+#if 0  // SRT
                 sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf);
 
                 // invalid sample
@@ -366,6 +369,13 @@ void main() {
                 }
 
                 eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
+#else
+                sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf, bsdf_val);
+                if (pdf <= 0.0) {
+                    finalColor = vec3(0);
+                    break;
+                }
+#endif
 
                 origin = hitPos + direction * DIRECTION_FORWARD;
                 throughput *= bsdf_val;

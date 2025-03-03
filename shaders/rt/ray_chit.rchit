@@ -39,6 +39,7 @@ void main() {
     VertexAttribute v2 =
         AttribsArray[nonuniformEXT(gl_InstanceCustomIndexEXT)].VertexAttribs[int(face.z)];
 
+    // [TODO] now no transform performed, as no transform in the BVH hierarchy
     // interpolate our vertex attribs
     const vec3 normal =
         normalize(BaryLerp(v0.normal.xyz, v1.normal.xyz, v2.normal.xyz, barycentrics));
