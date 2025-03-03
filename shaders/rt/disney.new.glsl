@@ -183,19 +183,19 @@ struct Disney {
 // wo: direction_in,  light direction  (normalized)
 void eval_disney(in Disney disney, in vec3 normal, in vec3 direction_out, in vec3 direction_in,
                  out vec3 bsdf) {
-    const bool inner = dot(normal, direction_out) < 0.0f;
     Onb onb = make_onb(normal);  // always the shading normal
-    const float ior = disney._eta;
-    float eta = inner ? ior : 1.0f / ior;
-
-    if (inner) {
-        direction_in = -direction_in;
-        direction_out = -direction_out;
-        normal = -normal;
-    }
 
     vec3 V = obn_to_local(onb, direction_in);
     vec3 L = obn_to_local(onb, direction_out);
+
+    const bool inner = V.z <= 0.0f;
+    if (inner) {
+        V = -V;
+        L = -L;
+    }
+    const float ior = disney._eta;
+    float eta = inner ? ior : 1.0f / ior;
+
     vec3 H = (L.z > 0.0f) ? normalize(L + V) : normalize(L + V * eta);
     if (H.z <= 0.0f) {
         H = -H;
@@ -282,21 +282,20 @@ void eval_disney(in Disney disney, in vec3 normal, in vec3 direction_out, in vec
     bsdf = bsdf * abs(L.z);
 }
 
-// direction is normalized, face to light
-void sample_disney(in Disney disney, inout uint wseed, in vec3 normal, out vec3 direction,
+// input : direction_in is normalized, to camera
+// output: direction    is normalized, to light
+void sample_disney(in Disney disney, inout uint wseed, in vec3 normal, in vec3 direction_in, out vec3 direction,
                    out float pdf) {
-    vec3 direction_in = -direction;
-    const bool inner = dot(normal, direction_in) < 0.0f;
     Onb onb = make_onb(normal);  // always the shading normal
-    const float ior = disney._eta;
-    float eta = inner ? ior : 1.0f / ior;
-
-    if (inner) {
-        direction_in = -direction_in;
-        normal = -normal;
-    }
 
     vec3 V = obn_to_local(onb, direction_in);
+    const bool inner = V.z <= 0.0f;
+    if (inner) {
+        // normal = -normal; // useless after onb
+        V = -V;
+    }
+    const float ior = disney._eta;
+    float eta = inner ? ior : 1.0f / ior;
 
     float lum = luminance(disney._base_color);
     vec3 ctint = (lum > 0.0f) ? disney._base_color / lum : vec3(1.0f);
@@ -356,10 +355,10 @@ void sample_disney(in Disney disney, inout uint wseed, in vec3 normal, out vec3 
     }
 
     // wi
-    direction = obn_to_world(onb, L);
     if (inner) {
-        direction = -direction;
+        L = -L;
     }
+    direction = obn_to_world(onb, L);
 
     pdf = 0.0f;
 
