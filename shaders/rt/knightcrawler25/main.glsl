@@ -25,7 +25,7 @@ State buildState(in Disney disney, in bool inner) {
 
     State state;
     state.mat = mat;
-    state.eta = inner ? 1.0 / disney._eta : disney._eta;
+    state.eta = inner ? disney._eta : (1.0 / disney._eta);
 
     return state;
 }
@@ -36,6 +36,7 @@ void sample_disney(in Disney disney, inout uint wseed, in vec3 normal, in vec3 d
                    out float pdf, out vec3 bsdf) {
     bool inner = dot(direction_in, normal) < 0;
     State state = buildState(disney, inner);
+    normal = inner ? -normal : normal;
 
     vec3 rnd = vec3(RandomFloat(wseed), RandomFloat(wseed), RandomFloat(wseed));
 
@@ -50,6 +51,7 @@ void eval_disney(in Disney disney, in vec3 normal, in vec3 direction_out, in vec
                  out vec3 bsdf) {
     bool inner = dot(direction_in, normal) < 0;
     State state = buildState(disney, inner);
+    normal = inner ? -normal : normal;
 
     float pdf = 1.0f;
     bsdf = DisneyEval(state, direction_in, normal, direction_out, pdf);

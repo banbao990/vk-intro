@@ -43,7 +43,7 @@ struct State {
 };
 
 // construct T, B
-void buildOnb(in vec3 N, inout vec3 T, inout vec3 B) {
+void BuildOnb(in vec3 N, inout vec3 T, inout vec3 B) {
     vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
     T = normalize(cross(up, N));
     B = cross(N, T);
@@ -70,8 +70,9 @@ void TintColors(Material mat, float eta, out float F0, out vec3 Csheen, out vec3
 
 vec3 EvalDisneyDiffuse(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out float pdf) {
     pdf = 0.0;
-    if (L.z <= 0.0)
+    if (L.z <= 0.0) {
         return vec3(0.0);
+    }
 
     float LDotH = dot(L, H);
 
@@ -98,8 +99,9 @@ vec3 EvalDisneyDiffuse(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out fl
 
 vec3 EvalMicrofacetReflection(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
     pdf = 0.0;
-    if (L.z <= 0.0)
+    if (L.z <= 0.0) {
         return vec3(0.0);
+    }
 
     float D = GTR2Aniso(H.z, H.x, H.y, mat.ax, mat.ay);
     float G1 = SmithGAniso(abs(V.z), V.x, V.y, mat.ax, mat.ay);
@@ -111,8 +113,9 @@ vec3 EvalMicrofacetReflection(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out 
 
 vec3 EvalMicrofacetRefraction(Material mat, float eta, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
     pdf = 0.0;
-    if (L.z >= 0.0)
+    if (L.z >= 0.0) {
         return vec3(0.0);
+    }
 
     float LDotH = dot(L, H);
     float VDotH = dot(V, H);
@@ -131,11 +134,13 @@ vec3 EvalMicrofacetRefraction(Material mat, float eta, vec3 V, vec3 L, vec3 H, v
 
 vec3 EvalClearcoat(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
     pdf = 0.0;
-    if (L.z <= 0.0)
+    if (L.z <= 0.0) {
         return vec3(0.0);
+    }
 
     float VDotH = dot(V, H);
 
+    // eta = 1.5 => R0 = 0.04
     float F = mix(0.04, 1.0, SchlickWeight(VDotH));
     float D = GTR1(H.z, mat.clearcoatRoughness);
     float G = SmithG(L.z, 0.25) * SmithG(V.z, 0.25);
@@ -145,45 +150,22 @@ vec3 EvalClearcoat(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
     return vec3(F) * D * G;
 }
 
-vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
-    pdf = 0.0;
-    vec3 f = vec3(0.0);
-
-    // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
-    vec3 T, B;
-    buildOnb(N, T, B);
-
-    // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
-    V = ToLocal(T, B, N, V);
-    L = ToLocal(T, B, N, L);
-
-    vec3 H;
-    if (L.z > 0.0)
-        H = normalize(L + V);
-    else
-        H = normalize(L + V * state.eta);
-
-    if (H.z < 0.0)
-        H = -H;
-
-    // Tint colors
-    vec3 Csheen, Cspec0;
-    float F0;
-    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
-
+void BuildWtAndPr(Material mat, vec3 Cspec0, float NDotV, out float dielectricWt, out float metalWt, out float glassWt, out float clearCtWt,
+                  out float diffPr, out float dielectricPr, out float metalPr, out float glassPr, out float clearCtPr) {
     // Model weights
-    float dielectricWt = (1.0 - state.mat.metallic) * (1.0 - state.mat.specTrans);
-    float metalWt = state.mat.metallic;
-    float glassWt = (1.0 - state.mat.metallic) * state.mat.specTrans;
+    dielectricWt = (1.0 - mat.metallic) * (1.0 - mat.specTrans);
+    metalWt = mat.metallic;
+    glassWt = (1.0 - mat.metallic) * mat.specTrans;
+    clearCtWt = 0.25 * mat.clearcoat;
 
     // Lobe probabilities
-    float schlickWt = SchlickWeight(V.z);
+    float schlickWt = SchlickWeight(NDotV);
 
-    float diffPr = dielectricWt * Luminance(state.mat.baseColor);
-    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-    float metalPr = metalWt * Luminance(mix(state.mat.baseColor, vec3(1.0), schlickWt));
-    float glassPr = glassWt;
-    float clearCtPr = 0.25 * state.mat.clearcoat;
+    diffPr = dielectricWt * Luminance(mat.baseColor);
+    dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
+    metalPr = metalWt * Luminance(mix(mat.baseColor, vec3(1.0), schlickWt));
+    glassPr = glassWt;
+    clearCtPr = clearCtWt;
 
     // Normalize probabilities
     float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
@@ -192,6 +174,40 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
     metalPr *= invTotalWt;
     glassPr *= invTotalWt;
     clearCtPr *= invTotalWt;
+}
+
+// make sure V, N is on the same side
+vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
+    pdf = 0.0;
+    vec3 f = vec3(0.0);
+
+    // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
+    vec3 T, B;
+    BuildOnb(N, T, B);
+
+    // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
+    V = ToLocal(T, B, N, V);
+    L = ToLocal(T, B, N, L);
+
+    vec3 H;
+    if (L.z > 0.0) {
+        H = normalize(L + V);
+    } else {
+        H = normalize(L + V * state.eta);
+    }
+
+    if (H.z < 0.0) {
+        H = -H;
+    }
+
+    // Tint colors
+    vec3 Csheen, Cspec0;
+    float F0;
+    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
+
+    float dielectricWt, metalWt, glassWt, clearCtWt;
+    float diffPr, dielectricPr, metalPr, glassPr, clearCtPr;
+    BuildWtAndPr(state.mat, Cspec0, V.z, dielectricWt, metalWt, glassWt, clearCtWt, diffPr, dielectricPr, metalPr, glassPr, clearCtPr);
 
     bool reflect = L.z * V.z > 0;
 
@@ -238,13 +254,14 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
 
     // Clearcoat
     if (clearCtPr > 0.0 && reflect) {
-        f += EvalClearcoat(state.mat, V, L, H, tmpPdf) * 0.25 * state.mat.clearcoat;
+        f += EvalClearcoat(state.mat, V, L, H, tmpPdf) * clearCtWt;
         pdf += tmpPdf * clearCtPr;
     }
 
     return f * abs(L.z);
 }
 
+// make sure V, N is on the same side
 vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out float pdf) {
     pdf = 0.0;
 
@@ -253,7 +270,7 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
 
     // TODO: Tangent and bitangent should be calculated from mesh (provided, the mesh has proper uvs)
     vec3 T, B;
-    buildOnb(N, T, B);
+    BuildOnb(N, T, B);
 
     // Transform to shading space to simplify operations (NDotL = L.z; NDotV = V.z; NDotH = H.z)
     V = ToLocal(T, B, N, V);
@@ -263,27 +280,9 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
     float F0;
     TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
 
-    // Model weights
-    float dielectricWt = (1.0 - state.mat.metallic) * (1.0 - state.mat.specTrans);
-    float metalWt = state.mat.metallic;
-    float glassWt = (1.0 - state.mat.metallic) * state.mat.specTrans;
-
-    // Lobe probabilities
-    float schlickWt = SchlickWeight(V.z);
-
-    float diffPr = dielectricWt * Luminance(state.mat.baseColor);
-    float dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-    float metalPr = metalWt * Luminance(mix(state.mat.baseColor, vec3(1.0), schlickWt));
-    float glassPr = glassWt;
-    float clearCtPr = 0.25 * state.mat.clearcoat;
-
-    // Normalize probabilities
-    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
-    diffPr *= invTotalWt;
-    dielectricPr *= invTotalWt;
-    metalPr *= invTotalWt;
-    glassPr *= invTotalWt;
-    clearCtPr *= invTotalWt;
+    float dielectricWt, metalWt, glassWt, clearCtWt;
+    float diffPr, dielectricPr, metalPr, glassPr, clearCtPr;
+    BuildWtAndPr(state.mat, Cspec0, V.z, dielectricWt, metalWt, glassWt, clearCtWt, diffPr, dielectricPr, metalPr, glassPr, clearCtPr);
 
     // CDF of the sampling probabilities
     float cdf[5];
@@ -296,19 +295,21 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
     // Sample a lobe based on its importance
     float r3 = rnd.z;
 
-    if (r3 < cdf[0])  // Diffuse
-    {
+    // Diffuse
+    if (r3 < cdf[0]) {
         L = CosineSampleHemisphere(r1, r2);
-    } else if (r3 < cdf[2])  // Dielectric + Metallic reflection
-    {
+    }
+    // Dielectric + Metallic reflection
+    else if (r3 < cdf[2]) {
         vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
 
         if (H.z < 0.0)
             H = -H;
 
         L = normalize(reflect(-V, H));
-    } else if (r3 < cdf[3])  // Glass
-    {
+    }
+    // Glass
+    else if (r3 < cdf[3]) {
         vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
         float F = DielectricFresnel(abs(dot(V, H)), state.eta);
 
@@ -325,8 +326,9 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
         {
             L = normalize(refract(-V, H, state.eta));
         }
-    } else  // Clearcoat
-    {
+    }
+    // Clearcoat
+    else {
         vec3 H = SampleGTR1(state.mat.clearcoatRoughness, r1, r2);
 
         if (H.z < 0.0)

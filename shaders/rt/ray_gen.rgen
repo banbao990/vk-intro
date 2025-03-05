@@ -359,7 +359,7 @@ void main() {
 
                 vec3 direction_in = -direction;
 
-#if 0  // SRT
+#if 0    // SRT
                 sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf);
 
                 // invalid sample
@@ -369,12 +369,19 @@ void main() {
                 }
 
                 eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
-#else
+#elif 1  // knightcrawler25
                 sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf, bsdf_val);
+
+                // sample_lambertian(wseed, hitNormal, direction, pdf);
+                // eval_disney(disney, hitNormal, direction,  direction_in, bsdf_val);
+
                 if (pdf <= 0.0) {
                     finalColor = vec3(0);
                     break;
                 }
+#else    // old
+                sample_lambertian(wseed, hitNormal, direction, pdf);
+                eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
 #endif
 
                 origin = hitPos + direction * DIRECTION_FORWARD;
@@ -467,6 +474,12 @@ void main() {
         float cm = Params.clamp_max;
         finalColor = min(finalColor, vec3(cm, cm, cm));
     }
+
+    // check nan and inf
+    if (any(isnan(finalColor)) || any(isinf(finalColor))) {
+        finalColor = vec3(0.0f);
+    }
+
     uint spp = Params.accumulate_spp;
     if (spp != 1) {
         finalColor =

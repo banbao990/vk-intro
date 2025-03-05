@@ -163,8 +163,6 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
         }
 
         if (ImGui::TreeNode("Disney")) {
-            ImGui::Text(
-                "Glass Component is not work! Low roughness may cause convergenve problems!");
             ++id;
             ImGui::PushID(id);
 

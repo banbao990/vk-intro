@@ -16,8 +16,9 @@ float Luminance(vec3 c) {
 // sample
 
 float GTR1(float NDotH, float a) {
-    if (a >= 1.0)
+    if (a >= 1.0) {
         return INV_PI;
+    }
     float a2 = a * a;
     float t = 1.0 + (a2 - 1.0) * NDotH * NDotH;
     return (a2 - 1.0) / (PI * log(a2) * t);
@@ -115,8 +116,9 @@ float DielectricFresnel(float cosThetaI, float eta) {
     float sinThetaTSq = eta * eta * (1.0f - cosThetaI * cosThetaI);
 
     // Total internal reflection
-    if (sinThetaTSq > 1.0)
+    if (sinThetaTSq > 1.0) {
         return 1.0;
+    }
 
     float cosThetaT = sqrt(max(1.0 - sinThetaTSq, 0.0));
 
