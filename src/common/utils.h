@@ -71,7 +71,7 @@ public:
 };
 
 namespace vkutils {
-uint32_t padding(uint32_t original_size, uint32_t alignment);
+uint64_t padding(uint64_t original_size, uint64_t alignment);
 
 glm::vec3 polar_to_cartesian(float yaw, float pitch);
 }  // namespace vkutils

@@ -175,14 +175,18 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
                 reset();
             }
 
+            if (ImGui::Button("Set All Zero")) {
+                auto ior = disney._eta;
+                disney = {disney._base_color};
+                disney._eta = ior;
+
+                disney_changed = true;
+            }
+
             disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
             disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.001f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Subsurface", &disney._subsurface, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Metallic", &disney._metallic, 0.0f, 1.0f);
-
-            temp = disney._is_refractive;
-            ImGui::Checkbox("Is Refractive", (bool *)&disney._is_refractive);
-            disney_changed |= (temp != disney._is_refractive);
 
             disney_changed |= ImGui::SliderFloat("Anisotropic", &disney._anisotropic, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Index of Refraction", &disney._eta, 1.001f, 2.0f);
@@ -1064,7 +1068,7 @@ void RTApp::init_swapchain() {
         swapchain_builder.set_desired_format({VK_FORMAT_R8G8B8A8_UNORM})
             .set_image_usage_flags(usage_flags)
             //.use_default_format_selection()
-            //.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)      // hard V-Sync
+            //.set_desired_present_mode(VK_PRESENT_MODE_FIFO_KHR)  // hard V-Sync
             .set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)  // no V-Sync
             .set_desired_extent(_window_extent.width, _window_extent.height)
             .build()
@@ -1461,7 +1465,6 @@ void RTApp::init_scenes() {
     disney._eta = 1.5f;
     disney._clearcoat_gloss = 0.5f;
     disney._sheen_tint = 0.2f;
-    disney._is_refractive = false;
     disney._specular_transmission = 0.5f;
     disney._specular_tint = 0.5f;
     disney._clearcoat = 0.5f;

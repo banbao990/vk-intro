@@ -118,6 +118,7 @@ struct UniformParams {
     int p1, p2;
 
     // !!! attention the alignment !!!
+    // DisneyParam should algined with 16 bytes
     DisneyParam disney_param;
 };
 

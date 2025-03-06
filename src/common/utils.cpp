@@ -1,8 +1,8 @@
 #include "utils.h"
 
-uint32_t vkutils::padding(uint32_t original_size, uint32_t alignment) {
-    const uint32_t min_align = alignment;
-    uint32_t aligned_size = original_size;
+uint64_t vkutils::padding(uint64_t original_size, uint64_t alignment) {
+    const uint64_t min_align = alignment;
+    uint64_t aligned_size = original_size;
     if (min_align > 0) {
         // aligned_size = (aligned_size + min_align - 1) % aligned_size * min_align;
         // note the aligned size must be the power of 2
