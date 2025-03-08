@@ -151,4 +151,20 @@ vec3 UniformSampleSphere(float r1, float r2) {
     return vec3(r * cos(phi), r * sin(phi), z);
 }
 
+// coordinate system
+
+void BuildOnb(in vec3 N, inout vec3 T, inout vec3 B) {
+    vec3 up = abs(N.z) < 0.9999999 ? vec3(0, 0, 1) : vec3(1, 0, 0);
+    T = normalize(cross(up, N));
+    B = cross(N, T);
+}
+
+vec3 ToWorld(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+    return V.x * X + V.y * Y + V.z * Z;
+}
+
+vec3 ToLocal(vec3 X, vec3 Y, vec3 Z, vec3 V) {
+    return vec3(dot(V, X), dot(V, Y), dot(V, Z));
+}
+
 #endif

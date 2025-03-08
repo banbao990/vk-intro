@@ -69,7 +69,7 @@ public:
     const static float __rho;
     static std::vector<int> __node_index;
     static DTree *__root;
-    static int DTree::get_root_index_by_STree_index(int index);
+    static int get_root_index_by_STree_index(int index);
 
     // all `index` is absolute index
 

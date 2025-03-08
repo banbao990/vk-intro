@@ -182,9 +182,10 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
 
                 disney_changed = true;
             }
+            disney_changed |= ImGui::Checkbox("Yes is HW1, No is knightcrawler25", &_disney_param._isHW1);
 
             disney_changed |= ImGui::ColorPicker3("Base Color", &disney._base_color[0]);
-            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.001f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Roughness", &disney._roughness, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Subsurface", &disney._subsurface, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Metallic", &disney._metallic, 0.0f, 1.0f);
 
@@ -199,7 +200,7 @@ void RTApp::draw_imgui(VkCommandBuffer cmd) {
             disney_changed |=
                 ImGui::SliderFloat("Specular Tint", &disney._specular_tint, 0.0f, 1.0f);
             disney_changed |= ImGui::SliderFloat("Sheen", &disney._sheen, 0.0f, 1.0f);
-            disney_changed |= ImGui::SliderFloat("Specular", &disney._specular, 0.0f, 1.0f);
+            disney_changed |= ImGui::SliderFloat("Specular[Only hw1]", &disney._specular, 0.0f, 1.0f);
 
             if (disney_changed) {
                 reset();
@@ -532,11 +533,11 @@ bool RTApp::check_test_end() {
     case EQUAL_SPP:
         ret = (_spp >= _test_spp);
         break;
-    case EQUAL_TIME:
+    case EQUAL_TIME: {
         auto delta = std::chrono::duration_cast<std::chrono::duration<float>>(
             _frame_time_samples.back() - _time_start);
         ret = delta.count() >= _test_time;
-        break;
+    } break;
     case NONE:
     default:
         ret = true;

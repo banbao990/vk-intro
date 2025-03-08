@@ -1,34 +1,23 @@
-#ifndef _RT_KNIGHTCRAWLER25_DISNEY_GLSL_
-#define _RT_KNIGHTCRAWLER25_DISNEY_GLSL_
+#ifndef _RT_KNIGHTCRAWLER25_MAIN_HW1_H_
+#define _RT_KNIGHTCRAWLER25_MAIN_HW1_H_
 
-// modified from https://github.com/knightcrawler25/GLSL-PathTracer/blob/master/src/shaders/common/disney.glsl
-
-/* References:
- * [1] [Physically Based Shading at Disney] https://media.disneyanimation.com/uploads/production/publication_asset/48/asset/s2012_pbs_disney_brdf_notes_v3.pdf
- * [2] [Extending the Disney BRDF to a BSDF with Integrated Subsurface Scattering] https://blog.selfshadow.com/publications/s2015-shading-course/burley/s2015_pbs_disney_bsdf_notes.pdf
- * [3] [The Disney BRDF Explorer] https://github.com/wdas/brdf/blob/main/src/brdfs/disney.brdf
- * [4] [Miles Macklin's implementation] https://github.com/mmacklin/tinsel/blob/master/src/disney.h
- * [5] [Simon Kallweit's project report] http://simon-kallweit.me/rendercompo2015/report/
- * [6] [Microfacet Models for Refraction through Rough Surfaces] https://www.cs.cornell.edu/~srm/publications/EGSR07-btdf.pdf
- * [7] [Sampling the GGX Distribution of Visible Normals] https://jcgt.org/published/0007/04/01/paper.pdf
- * [8] [Pixar's Foundation for Materials] https://graphics.pixar.com/library/PxrMaterialsCourse2017/paper.pdf
- * [9] [Mitsuba 3] https://github.com/mitsuba-renderer/mitsuba3
- */
-
+#include "../random.glsl"
 #include "helper.glsl"
+#include "struct.glsl"
 
-void TintColors(Material mat, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0) {
+void TintColors_hw1(Material mat, float eta, out float F0, out vec3 Csheen, out vec3 Cspec0) {
     float lum = Luminance(mat.baseColor);
     vec3 ctint = lum > 0.0 ? mat.baseColor / lum : vec3(1.0);
 
     F0 = (1.0 - eta) / (1.0 + eta);
     F0 *= F0;
 
-    Cspec0 = F0 * mix(vec3(1.0), ctint, mat.specularTint);
+    vec3 Ks = mix(vec3(1.0), ctint, mat.specularTint);
+    Cspec0 = mix(mat.specular * F0 * Ks, mat.baseColor, mat.metallic);
     Csheen = mix(vec3(1.0), ctint, mat.sheenTint);
 }
 
-vec3 EvalDisneyDiffuse(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out float pdf) {
+vec3 EvalDisneyDiffuse_hw1(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out float pdf) {
     pdf = 0.0;
     if (L.z <= 0.0) {
         return vec3(0.0);
@@ -36,16 +25,16 @@ vec3 EvalDisneyDiffuse(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out fl
 
     float LDotH = dot(L, H);
 
-    float Rr = 2.0 * mat.roughness * LDotH * LDotH;
+    float Rr = mat.roughness * LDotH * LDotH;
 
     // Diffuse
+    float Fd90 = 0.5 + 2.0 * Rr;
     float FL = SchlickWeight(L.z);
     float FV = SchlickWeight(V.z);
-    float Fretro = Rr * (FL + FV + FL * FV * (Rr - 1.0));
-    float Fd = (1.0 - 0.5 * FL) * (1.0 - 0.5 * FV);
+    float diffuse = mix(1.0, Fd90, FL) * mix(1.0, Fd90, FV);
 
     // Fake subsurface
-    float Fss90 = 0.5 * Rr;
+    float Fss90 = Rr;
     float Fss = mix(1.0, Fss90, FL) * mix(1.0, Fss90, FV);
     float ss = 1.25 * (Fss * (1.0 / (L.z + V.z) - 0.5) + 0.5);
 
@@ -54,10 +43,10 @@ vec3 EvalDisneyDiffuse(Material mat, vec3 Csheen, vec3 V, vec3 L, vec3 H, out fl
     vec3 Fsheen = FH * mat.sheen * Csheen;
 
     pdf = L.z * INV_PI;
-    return INV_PI * mat.baseColor * mix(Fd + Fretro, ss, mat.subsurface) + Fsheen;
+    return INV_PI * mat.baseColor * mix(diffuse, ss, mat.subsurface) + Fsheen;
 }
 
-vec3 EvalMicrofacetReflection(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
+vec3 EvalMicrofacetReflection_hw1(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
     pdf = 0.0;
     if (L.z <= 0.0) {
         return vec3(0.0);
@@ -68,10 +57,10 @@ vec3 EvalMicrofacetReflection(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out 
     float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, mat.ax, mat.ay);
 
     pdf = G1 * D / (4.0 * V.z);
-    return F * D * G2 / (4.0 * L.z * V.z);
+    return mat.baseColor * F * (D * G2 / (4.0 * L.z * V.z));
 }
 
-vec3 EvalMicrofacetRefraction(Material mat, float eta, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
+vec3 EvalMicrofacetRefraction_hw1(Material mat, float eta, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
     pdf = 0.0;
     if (L.z >= 0.0) {
         return vec3(0.0);
@@ -85,14 +74,13 @@ vec3 EvalMicrofacetRefraction(Material mat, float eta, vec3 V, vec3 L, vec3 H, v
     float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, mat.ax, mat.ay);
     float denom = LDotH + VDotH * eta;
     denom *= denom;
-    float eta2 = eta * eta;
     float jacobian = abs(LDotH) / denom;
 
     pdf = G1 * max(0.0, VDotH) * D * jacobian / V.z;
-    return pow(mat.baseColor, vec3(0.5)) * (1.0 - F) * D * G2 * abs(VDotH) * jacobian * eta2 / abs(L.z * V.z);
+    return pow(mat.baseColor, vec3(0.5)) * (1.0 - F) * (D * G2 * abs(VDotH) * jacobian / abs(L.z * V.z));
 }
 
-vec3 EvalClearcoat(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
+vec3 EvalClearcoat_hw1(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
     pdf = 0.0;
     if (L.z <= 0.0) {
         return vec3(0.0);
@@ -110,34 +98,32 @@ vec3 EvalClearcoat(Material mat, vec3 V, vec3 L, vec3 H, out float pdf) {
     return vec3(F) * D * G;
 }
 
-void BuildWtAndPr(Material mat, vec3 Cspec0, float NDotV, out float dielectricWt, out float metalWt, out float glassWt, out float clearCtWt,
-                  out float diffPr, out float dielectricPr, out float metalPr, out float glassPr, out float clearCtPr) {
+void BuildWtAndPr_hw1(Material mat, float NDotV, out float diffWt, out float metalWt, out float glassWt, out float clearCtWt,
+                      out float diffPr, out float metalPr, out float glassPr, out float clearCtPr) {
     // Model weights
-    dielectricWt = (1.0 - mat.metallic) * (1.0 - mat.specTrans);
-    metalWt = mat.metallic;
+    diffWt = (1.0 - mat.metallic) * (1.0 - mat.specTrans);
+    metalWt = (1 - mat.specTrans * (1.0 - mat.metallic));
     glassWt = (1.0 - mat.metallic) * mat.specTrans;
     clearCtWt = 0.25 * mat.clearcoat;
 
     // Lobe probabilities
     float schlickWt = SchlickWeight(NDotV);
 
-    diffPr = dielectricWt * Luminance(mat.baseColor);
-    dielectricPr = dielectricWt * Luminance(mix(Cspec0, vec3(1.0), schlickWt));
-    metalPr = metalWt * Luminance(mix(mat.baseColor, vec3(1.0), schlickWt));
+    diffPr = diffWt;
+    metalPr = metalWt;
     glassPr = glassWt;
     clearCtPr = clearCtWt;
 
     // Normalize probabilities
-    float invTotalWt = 1.0 / (diffPr + dielectricPr + metalPr + glassPr + clearCtPr);
+    float invTotalWt = 1.0 / (diffPr + metalPr + glassPr + clearCtPr);
     diffPr *= invTotalWt;
-    dielectricPr *= invTotalWt;
     metalPr *= invTotalWt;
     glassPr *= invTotalWt;
     clearCtPr *= invTotalWt;
 }
 
 // make sure V, N is on the same side
-vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
+vec3 DisneyEval_hw1(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
     pdf = 0.0;
     vec3 f = vec3(0.0);
 
@@ -163,11 +149,11 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
     // Tint colors
     vec3 Csheen, Cspec0;
     float F0;
-    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
+    TintColors_hw1(state.mat, state.eta, F0, Csheen, Cspec0);
 
-    float dielectricWt, metalWt, glassWt, clearCtWt;
-    float diffPr, dielectricPr, metalPr, glassPr, clearCtPr;
-    BuildWtAndPr(state.mat, Cspec0, V.z, dielectricWt, metalWt, glassWt, clearCtWt, diffPr, dielectricPr, metalPr, glassPr, clearCtPr);
+    float diffWt, metalWt, glassWt, clearCtWt;
+    float diffPr, metalPr, glassPr, clearCtPr;
+    BuildWtAndPr_hw1(state.mat, V.z, diffWt, metalWt, glassWt, clearCtWt, diffPr, metalPr, glassPr, clearCtPr);
 
     bool reflect = L.z * V.z > 0;
 
@@ -176,25 +162,15 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
 
     // Diffuse
     if (diffPr > 0.0 && reflect) {
-        f += EvalDisneyDiffuse(state.mat, Csheen, V, L, H, tmpPdf) * dielectricWt;
+        f += EvalDisneyDiffuse_hw1(state.mat, Csheen, V, L, H, tmpPdf) * diffWt;
         pdf += tmpPdf * diffPr;
-    }
-
-    // Dielectric Reflection
-    if (dielectricPr > 0.0 && reflect) {
-        // Normalize for interpolating based on Cspec0
-        float F = (DielectricFresnel(VDotH, 1.0 / state.mat.ior) - F0) / (1.0 - F0);
-
-        f += EvalMicrofacetReflection(state.mat, V, L, H, mix(Cspec0, vec3(1.0), F), tmpPdf) * dielectricWt;
-        pdf += tmpPdf * dielectricPr;
     }
 
     // Metallic Reflection
     if (metalPr > 0.0 && reflect) {
-        // Tinted to base color
-        vec3 F = mix(state.mat.baseColor, vec3(1.0), SchlickWeight(VDotH));
+        vec3 F = mix(Cspec0, vec3(1.0), SchlickWeight(VDotH));
 
-        f += EvalMicrofacetReflection(state.mat, V, L, H, F, tmpPdf) * metalWt;
+        f += EvalMicrofacetReflection_hw1(state.mat, V, L, H, F, tmpPdf) * metalWt;
         pdf += tmpPdf * metalPr;
     }
 
@@ -204,17 +180,17 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
         float F = DielectricFresnel(VDotH, state.eta);
 
         if (reflect) {
-            f += EvalMicrofacetReflection(state.mat, V, L, H, vec3(F), tmpPdf) * glassWt;
+            f += EvalMicrofacetReflection_hw1(state.mat, V, L, H, vec3(F), tmpPdf) * glassWt;
             pdf += tmpPdf * glassPr * F;
         } else {
-            f += EvalMicrofacetRefraction(state.mat, state.eta, V, L, H, vec3(F), tmpPdf) * glassWt;
+            f += EvalMicrofacetRefraction_hw1(state.mat, state.eta, V, L, H, vec3(F), tmpPdf) * glassWt;
             pdf += tmpPdf * glassPr * (1.0 - F);
         }
     }
 
     // Clearcoat
     if (clearCtPr > 0.0 && reflect) {
-        f += EvalClearcoat(state.mat, V, L, H, tmpPdf) * clearCtWt;
+        f += EvalClearcoat_hw1(state.mat, V, L, H, tmpPdf) * clearCtWt;
         pdf += tmpPdf * clearCtPr;
     }
 
@@ -222,7 +198,7 @@ vec3 DisneyEval(State state, vec3 V, vec3 N, vec3 L, out float pdf) {
 }
 
 // make sure V, N is on the same side
-vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out float pdf) {
+vec3 DisneySample_hw1(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out float pdf) {
     pdf = 0.0;
 
     float r1 = rnd.x;
@@ -238,19 +214,18 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
     // Tint colors
     vec3 Csheen, Cspec0;
     float F0;
-    TintColors(state.mat, state.eta, F0, Csheen, Cspec0);
+    TintColors_hw1(state.mat, state.eta, F0, Csheen, Cspec0);
 
-    float dielectricWt, metalWt, glassWt, clearCtWt;
-    float diffPr, dielectricPr, metalPr, glassPr, clearCtPr;
-    BuildWtAndPr(state.mat, Cspec0, V.z, dielectricWt, metalWt, glassWt, clearCtWt, diffPr, dielectricPr, metalPr, glassPr, clearCtPr);
+    float diffWt, metalWt, glassWt, clearCtWt;
+    float diffPr, metalPr, glassPr, clearCtPr;
+    BuildWtAndPr_hw1(state.mat, V.z, diffWt, metalWt, glassWt, clearCtWt, diffPr, metalPr, glassPr, clearCtPr);
 
     // CDF of the sampling probabilities
-    float cdf[5];
+    float cdf[4];
     cdf[0] = diffPr;
-    cdf[1] = cdf[0] + dielectricPr;
-    cdf[2] = cdf[1] + metalPr;
-    cdf[3] = cdf[2] + glassPr;
-    cdf[4] = cdf[3] + clearCtPr;
+    cdf[1] = cdf[0] + metalPr;
+    cdf[2] = cdf[1] + glassPr;
+    cdf[3] = cdf[2] + clearCtPr;
 
     // Sample a lobe based on its importance
     float r3 = rnd.z;
@@ -260,7 +235,7 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
         L = CosineSampleHemisphere(r1, r2);
     }
     // Dielectric + Metallic reflection
-    else if (r3 < cdf[2]) {
+    else if (r3 < cdf[1]) {
         vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
 
         if (H.z < 0.0) {
@@ -270,7 +245,7 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
         L = normalize(reflect(-V, H));
     }
     // Glass
-    else if (r3 < cdf[3]) {
+    else if (r3 < cdf[2]) {
         vec3 H = SampleGGXVNDF(V, state.mat.ax, state.mat.ay, r1, r2);
         float F = DielectricFresnel(abs(dot(V, H)), state.eta);
 
@@ -279,7 +254,7 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
         }
 
         // Rescale random number for reuse
-        r3 = (r3 - cdf[2]) / (cdf[3] - cdf[2]);
+        r3 = (r3 - cdf[1]) / (cdf[2] - cdf[1]);
 
         // Reflection
         if (r3 < F) {
@@ -304,7 +279,20 @@ vec3 DisneySample(State state, vec3 V, vec3 N, in vec3 rnd, out vec3 L, out floa
     L = ToWorld(T, B, N, L);
     V = ToWorld(T, B, N, V);
 
-    return DisneyEval(state, V, N, L, pdf);
+    return DisneyEval_hw1(state, V, N, L, pdf);
+}
+
+// input : direction_in is normalized, to camera
+// output: direction    is normalized, to light
+void sample_disney_hw1(in Disney disney, inout uint wseed, in vec3 normal, in vec3 direction_in, out vec3 direction,
+                       out float pdf, out vec3 bsdf) {
+    bool inner = dot(direction_in, normal) < 0;
+    State state = buildState(disney, inner);
+    normal = inner ? -normal : normal;
+
+    vec3 rnd = vec3(RandomFloat(wseed), RandomFloat(wseed), RandomFloat(wseed));
+
+    bsdf = DisneySample_hw1(state, direction_in, normal, rnd, direction, pdf);
 }
 
 #endif

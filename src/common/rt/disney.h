@@ -27,7 +27,8 @@ struct Disney {
 struct DisneyParam {
     Disney _disney;
     int _id;
-    float p1, p2, p3;
+    bool _isHW1;
+    int p1, p2;
 };
 
 #endif  // !DESNEY_H

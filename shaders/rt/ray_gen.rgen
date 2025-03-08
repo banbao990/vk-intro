@@ -247,6 +247,7 @@ void eval_lambertian(in vec3 normal, in vec3 direction, out float pdf) {
 // #include "disney-bad/disney.glsl"
 // #include "disney-bad/disney.SRT.glsl"
 #include "knightcrawler25/main.glsl"
+#include "knightcrawler25/main.hw1.glsl"
 
 void main() {
     const vec2 curPixel = vec2(gl_LaunchIDEXT.xy);
@@ -370,7 +371,11 @@ void main() {
 
                 eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
 #elif 1  // knightcrawler25
-                sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf, bsdf_val);
+                if (Params.disney_param._isHW1) {
+                    sample_disney_hw1(disney, wseed, hitNormal, direction_in, direction, pdf, bsdf_val);
+                } else {
+                    sample_disney(disney, wseed, hitNormal, direction_in, direction, pdf, bsdf_val);
+                }
 
                 // sample_lambertian(wseed, hitNormal, direction, pdf);
                 // eval_disney(disney, hitNormal, direction,  direction_in, bsdf_val);
@@ -379,7 +384,7 @@ void main() {
                     finalColor = vec3(0);
                     break;
                 }
-#else    // old
+#else  // old
                 sample_lambertian(wseed, hitNormal, direction, pdf);
                 eval_disney(disney, hitNormal, direction, direction_in, bsdf_val);
 #endif
