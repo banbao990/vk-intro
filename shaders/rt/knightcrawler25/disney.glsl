@@ -68,7 +68,7 @@ vec3 EvalMicrofacetReflection(Material mat, vec3 V, vec3 L, vec3 H, vec3 F, out 
     float G2 = G1 * SmithGAniso(abs(L.z), L.x, L.y, mat.ax, mat.ay);
 
     pdf = G1 * D / (4.0 * V.z);
-    return F * D * G2 / (4.0 * L.z * V.z);
+    return mat.baseColor * F * D * G2 / (4.0 * L.z * V.z);
 }
 
 vec3 EvalMicrofacetRefraction(Material mat, float eta, vec3 V, vec3 L, vec3 H, vec3 F, out float pdf) {
